@@ -1,16 +1,14 @@
 package de.hpi.callcenterdashboard
 
 import org.scalatra._
+import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends CallcenterDashboardStack {
+class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {
 
   get("/") {
-    <html>
-      <body>
-        <h1>Hello, world!</h1>
-        Say <a href="hello-scalate">hello to Scalate</a>.
-      </body>
-    </html>
+    contentType="text/html"
+
+    layoutTemplate("/index")
   }
 
 }
