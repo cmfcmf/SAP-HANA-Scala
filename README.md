@@ -3,7 +3,6 @@
 ## Build & Run ##
 
 ```sh
-$ cd Callcenter_Dashboard
 $ ./sbt
 > jetty:start
 > browse
