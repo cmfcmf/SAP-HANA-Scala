@@ -2,10 +2,16 @@
 
 ## Build & Run ##
 
+Linux:
 ```sh
 $ ./sbt
-> jetty:start
-> browse
+> ~;jetty:start;jetty:stop
 ```
 
-If `browse` doesn't launch your browser, manually open [http://localhost:8080/](http://localhost:8080/) in your browser.
+Windows:
+```
+$ sbt
+> ~;jetty:start;jetty:stop
+```
+
+Open [http://localhost:8080/](http://localhost:8080/) in your browser.
