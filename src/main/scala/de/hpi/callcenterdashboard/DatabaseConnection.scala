@@ -51,7 +51,6 @@ class DatabaseConnection {
         val statement = "SELECT * FROM SAPQ92.KNA1_HPI WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) LIMIT 100"
         val preparedStatement = connection.get.prepareStatement(statement)
         preparedStatement.setString(1, kdnr)
-        println (preparedStatement)
         val resultSet = preparedStatement.executeQuery()
         printCustomerResults(resultSet)
       } else {
