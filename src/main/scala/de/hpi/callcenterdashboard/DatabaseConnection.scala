@@ -49,14 +49,21 @@ class DatabaseConnection {
   def printCustomersBy(kdnr: String = "", name: String = "", plz: String = ""): Unit = {
     try {
       // create the statement, and run the select query
-      val statement = connection.get.createStatement()
       if (kdnr != "") {
-        val resultSet = statement.executeQuery("SELECT * FROM SAPQ92.KNA1_HPI WHERE LOWER(KUNDE) LIKE LOWER('" + kdnr + "') LIMIT 100")
+        val statement = "SELECT * FROM SAPQ92.KNA1_HPI WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) LIMIT 100"
+        val preparedStatement = connection.get.prepareStatement(statement)
+        preparedStatement.setString(1, kdnr)
+        println (preparedStatement)
+        val resultSet = preparedStatement.executeQuery()
         printCustomerResults(resultSet)
       } else {
         if (plz != "" && name != "") {
-          val resultSet = statement.executeQuery("SELECT * FROM SAPQ92.KNA1_HPI " +
-            "WHERE LOWER(NAME) LIKE LOWER('" + name + "')AND PLZ LIKE '" + plz + "' LIMIT 100")
+          val statement = "SELECT * FROM SAPQ92.KNA1_HPI " +
+            "WHERE CONTAINS(NAME, ?, FUZZY(0.8)) AND CONTAINS(PLZ, ?, FUZZY(0.9)) LIMIT 100"
+          val preparedStatement = connection.get.prepareStatement(statement)
+          preparedStatement.setString(1, name)
+          preparedStatement.setString(2, plz)
+          val resultSet = preparedStatement.executeQuery()
           printCustomerResults(resultSet)
         }
         else {
