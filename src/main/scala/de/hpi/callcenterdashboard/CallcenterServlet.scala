@@ -1,8 +1,6 @@
 package de.hpi.callcenterdashboard
 
 import javax.servlet.ServletConfig
-
-import org.scalatra._
 import org.scalatra.scalate.ScalateSupport
 
 class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {

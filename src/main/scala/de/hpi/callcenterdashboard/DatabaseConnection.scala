@@ -1,8 +1,6 @@
 package de.hpi.callcenterdashboard
 // JDBC
-import java.sql.{Connection, DriverManager, JDBCType}
-
-import com.sap.db.jdbc.trace.ResultSet
+import java.sql.{Connection, DriverManager}
 
 class DatabaseConnection {
   val credentials = new Credentials()
