@@ -2,11 +2,13 @@ package de.hpi.callcenterdashboard
 // JDBC
 import java.sql.{Connection, DriverManager, JDBCType}
 
+import com.sap.db.jdbc.trace.ResultSet
+
 class DatabaseConnection {
   val credentials = new Credentials()
   val driver = "com.sap.db.jdbc.Driver"
   val url = "jdbc:sap://" + credentials.hostname + ":" + credentials.port
-  var connection = None : Option[Connection]
+  var connection = None: Option[Connection]
 
   def open(): Unit = {
     try {
@@ -37,5 +39,33 @@ class DatabaseConnection {
       case e: Throwable => e.printStackTrace()
     }
   }
+  def printCustomerResults (resultSet : java.sql.ResultSet): Unit = {
+    while (resultSet.next()) {
+      println(resultSet.getString("NAME"))
+      println(resultSet.getString("STRASSE") + ", " + resultSet.getString("PLZ") + " " + resultSet.getString("ORT") + ", " + resultSet.getString("LAND"))
+      println(resultSet.getString("BRANCHE") + " " + resultSet.getString("KUNDENGRUPPE"))
+    }
+  }
+  def printCustomersBy(kdnr: String = "", name: String = "", plz: String = ""): Unit = {
+    try {
+      // create the statement, and run the select query
+      val statement = connection.get.createStatement()
+      if (kdnr != "") {
+        val resultSet = statement.executeQuery("SELECT * FROM SAPQ92.KNA1_HPI WHERE LOWER(KUNDE) LIKE LOWER('" + kdnr + "') LIMIT 100")
+        printCustomerResults(resultSet)
+      } else {
+        if (plz != "" && name != "") {
+          val resultSet = statement.executeQuery("SELECT * FROM SAPQ92.KNA1_HPI " +
+            "WHERE LOWER(NAME) LIKE LOWER('" + name + "')AND PLZ LIKE '" + plz + "' LIMIT 100")
+          printCustomerResults(resultSet)
+        }
+        else {
+          println("Please insert either customer's ID or the customer's name and zip code.")
+        }
+      }
+    } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    }
 }
 
