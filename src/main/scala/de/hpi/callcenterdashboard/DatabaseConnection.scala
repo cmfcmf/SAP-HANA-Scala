@@ -48,15 +48,20 @@ class DatabaseConnection {
     try {
       // create the statement, and run the select query
       if (kdnr != "") {
-        val statement = "SELECT * FROM SAPQ92.KNA1_HPI WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) LIMIT 100"
+        val statement = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
+          "WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) " +
+          "ORDER BY score DESC " +
+          "LIMIT 100"
         val preparedStatement = connection.get.prepareStatement(statement)
         preparedStatement.setString(1, kdnr)
         val resultSet = preparedStatement.executeQuery()
         printCustomerResults(resultSet)
       } else {
         if (plz != "" && name != "") {
-          val statement = "SELECT * FROM SAPQ92.KNA1_HPI " +
-            "WHERE CONTAINS(NAME, ?, FUZZY(0.8)) AND CONTAINS(PLZ, ?, FUZZY(0.9)) LIMIT 100"
+          val statement = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
+            "WHERE CONTAINS(NAME, ?, FUZZY(0.8)) AND CONTAINS(PLZ, ?, FUZZY(0.9)) " +
+            "ORDER BY score DESC " +
+            "LIMIT 100"
           val preparedStatement = connection.get.prepareStatement(statement)
           preparedStatement.setString(1, name)
           preparedStatement.setString(2, plz)
