@@ -14,6 +14,18 @@ class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {
     databaseConnection.printCustomers()
   }
 
+  get("/example-1") {
+    contentType = "text/html"
+
+    class AnObject {
+      def aMethod = "Hi there!"
+    }
+
+    val list = List("foo", "bar", "baz")
+
+    layoutTemplate("/example1", "html" -> "<b>I am fat.</b>", "object" -> new AnObject(), "list" -> list)
+  }
+
   val databaseConnection = new DatabaseConnection()
 
   override def init(config: ServletConfig): Unit = {
