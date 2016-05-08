@@ -1,0 +1,11 @@
+HTML / Scalar: {{ html }}<br />
+HTML / Scalar (RAW): {{{ html }}}<br />
+Object:
+{{#object}}
+    {{ aMethod }}
+{{/object}}<br />
+List:
+{{#list}}
+    {{ . }} <!-- bezieht sich auf das Objekt (String) in der Liste -->
+    ({{ length }})<br /> <!-- ruft eine Funktion auf dem Objekt (String) auf -->
+{{/list}}
