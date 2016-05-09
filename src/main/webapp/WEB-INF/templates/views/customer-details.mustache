@@ -1,0 +1,20 @@
+{{#customer}}
+<div class="row">
+    <div class="col-md-8">
+        <h4 class="list-group-item-heading"><strong>{{customerNumber}}</strong> &raquo; {{name}}</h4>
+        <p class="list-group-item-text">
+        <address>
+            <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
+            <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
+            <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{country}}
+        </address>
+        </p>
+    </div>
+    <div class="col-md-4">
+        <div class="embed-responsive embed-responsive-16by9">
+        <iframe frameborder="0" style="border:0" class="embed-responsive-item"
+                src="https://www.google.com/maps/embed/v1/place?q=place_id:ChIJS03CfNz1qEcRpG8N3_dakD8&key=AIzaSyCQ_CBTJwSgHKe4IyFf6BxoiEDKh75T76I" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+{{/customer}}

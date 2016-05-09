@@ -1,6 +1,7 @@
 package de.hpi.callcenterdashboard
 // JDBC
 import java.sql.{Connection, DriverManager}
+import scala.collection.immutable.ListMap
 
 class DatabaseConnection {
   val credentials = new Credentials()
@@ -24,29 +25,8 @@ class DatabaseConnection {
     connection.get.close()
   }
 
-  def printCustomers(): Unit = {
+  def getCustomerBy(kdnr: String = "", name: String = "", plz: String = ""): List[Customer] = {
     try {
-      // create the statement, and run the select query
-      val statement = connection.get.createStatement()
-      val resultSet = statement.executeQuery("SELECT * FROM SAPQ92.KNA1_HPI LIMIT 100")
-      while (resultSet.next()) {
-        val knd_name = resultSet.getString("NAME")
-        println(knd_name)
-      }
-    } catch {
-      case e: Throwable => e.printStackTrace()
-    }
-  }
-  def printCustomerResults (resultSet : java.sql.ResultSet): Unit = {
-    while (resultSet.next()) {
-      println(resultSet.getString("NAME"))
-      println(resultSet.getString("STRASSE") + ", " + resultSet.getString("PLZ") + " " + resultSet.getString("ORT") + ", " + resultSet.getString("LAND"))
-      println(resultSet.getString("BRANCHE") + " " + resultSet.getString("KUNDENGRUPPE"))
-    }
-  }
-  def printCustomersBy(kdnr: String = "", name: String = "", plz: String = ""): Unit = {
-    try {
-      // create the statement, and run the select query
       if (kdnr != "") {
         val statement = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
           "WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) " +
@@ -55,26 +35,54 @@ class DatabaseConnection {
         val preparedStatement = connection.get.prepareStatement(statement)
         preparedStatement.setString(1, kdnr)
         val resultSet = preparedStatement.executeQuery()
-        printCustomerResults(resultSet)
+        var customers: List[Customer] = List.empty
+        while (resultSet.next()) {
+          val temp: List[Customer] = List(new Customer(resultSet))
+          customers = List.concat(customers, temp)
+        }
+        return customers
       } else {
         if (plz != "" && name != "") {
-          val statement = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
+          val sql = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
             "WHERE CONTAINS(NAME, ?, FUZZY(0.8)) AND CONTAINS(PLZ, ?, FUZZY(0.9)) " +
             "ORDER BY score DESC " +
             "LIMIT 100"
-          val preparedStatement = connection.get.prepareStatement(statement)
+          val preparedStatement = connection.get.prepareStatement(sql)
           preparedStatement.setString(1, name)
           preparedStatement.setString(2, plz)
           val resultSet = preparedStatement.executeQuery()
-          printCustomerResults(resultSet)
+          var customers: List[Customer] = List.empty
+          while (resultSet.next()) {
+            //val temp: List[Customer] = List(new Customer(resultSet))
+            customers :+ new Customer(resultSet)
+            //customers = List.concat(customers, temp)
+          }
+          return customers
         }
         else {
-          println("Please insert either customer's ID or the customer's name and zip code.")
+          return List.empty
         }
       }
     } catch {
-        case e: Throwable => e.printStackTrace()
-      }
+        case e: Throwable => return List.empty
     }
+  }
+
+  def getSingleCustomerBy(customerId : String) : Customer = {
+    val sql ="SELECT * FROM SAPQ92.KNA1_HPI WHERE KUNDE = ?"
+    val preparedStatement = connection.get.prepareStatement(sql)
+    preparedStatement.setString(1, customerId)
+    val resultSet = preparedStatement.executeQuery()
+    resultSet.next()
+    return new Customer(resultSet)
+  }
+
+  def getOrderOf(customerId : String) : Order = {
+    return new Order()
+  }
+
+  def getSalesOf(customerID : String) : Map[String, String] = {
+    return new ListMap()
+  }
 }
 

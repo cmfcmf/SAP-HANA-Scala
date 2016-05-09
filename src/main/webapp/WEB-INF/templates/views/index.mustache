@@ -4,17 +4,17 @@
 
     <form class="form" method="post" action="find-customer">
         <div class="form-group">
-            <input class="form-control" id="customerId" aria-label="Customer Id" placeholder="Customer Id" type="text">
+            <input class="form-control" id="customerId" name="customerId" aria-label="Customer Id" placeholder="Customer Id" type="text">
         </div>
         <div class="row">
             <div class="col-sm-6">
                 <div class="form-group">
-                    <input class="form-control" id="customerName" aria-label="Customer Name" placeholder="Customer Name" type="text">
+                    <input class="form-control" id="customerName" name="customerName" aria-label="Customer Name" placeholder="Customer Name" type="text">
                 </div>
             </div>
             <div class="col-sm-6">
                 <div class="form-group">
-                    <input class="form-control" id="customerZip" aria-label="Customer Zip code" placeholder="Customer Zip code" type="text">
+                    <input class="form-control" id="customerZip" name="customerZip" aria-label="Customer Zip code" placeholder="Customer Zip code" type="text">
                 </div>
             </div>
         </div>
@@ -22,61 +22,4 @@
             Search
         </button>
     </form>
-</div>
-<div class="col-xs-12">
-    <h2>Results</h2>
-    <div class="panel panel-default">
-      <div class="panel-heading">Harry James Potter</div>
-      <div class="panel-body">
-          <dl style="margin-bottom: 0">
-            <dt>Address</dt>
-            <dd>Privet Drive Nr. 4, Little Whinging</dd>
-          </dl>
-      </div>
-      <table class="table">
-        <thead>
-        <tr>
-            <th>Year</th>
-            <th>Umsatz</th>
-            <th>Gewinn</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <td>2013</td>
-            <td>20.000 &euro;</td>
-            <td>5.000 &euro;</td>
-        </tr>
-        <tr>
-            <td>2014</td>
-            <td>80.000 &euro;</td>
-            <td>2.000 &euro;</td>
-        </tr>
-        </tbody>
-      </table>
-      <div class="panel-body">
-        <h3 style="margin: 0">Last interactions</h3>
-      </div>
-      <table class="table">
-        <thead>
-        <tr>
-            <th>Product</th>
-            <th>Money</th>
-            <th>Date</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <td>F-P10</td>
-            <td>20.000 &euro;</td>
-            <td>07/08/2035</td>
-        </tr>
-        <tr>
-            <td>P-106</td>
-            <td>80.000 &euro;</td>
-            <td>11/03/2015</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
 </div>

@@ -12,4 +12,5 @@ class Customer(result: ResultSet) {
   val street = result.getString("STRASSE")
   val business = result.getString("BRANCHE")
   val group = result.getString("KUNDENGRUPPE")
+
 }
