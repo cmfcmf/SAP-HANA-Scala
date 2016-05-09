@@ -1,7 +1,6 @@
 package de.hpi.callcenterdashboard
 // JDBC
 import java.sql.{Connection, DriverManager}
-import scala.collection.immutable.ListMap
 
 class DatabaseConnection {
   val credentials = new Credentials()
@@ -81,8 +80,43 @@ class DatabaseConnection {
     return new Order()
   }
 
-  def getSalesOf(customerID : String) : Map[String, String] = {
-    return new ListMap()
+  def getSalesOf(customerID: String, years: List[String]): Map[String, String] = {
+    if (years.nonEmpty) {
+      try {
+        //create String with format (?,?,?,?) for PreparedStatement
+        var yearString = "(?"
+        for (i <- 1 until years.length) {
+          yearString += ",?"
+        }
+        yearString += ")"
+
+        val statement = "SELECT GESCHAFTSJAHR, SUM(HAUS_BETRAG) as betrag " +
+          "FROM SAPQ92.ACDOCA_HPI " +
+          "WHERE GESCHAFTSJAHR IN " + yearString +
+          " AND KUNDE = ? " +
+          "AND KONTO = '0000893015' " +
+          "GROUP BY GESCHAFTSJAHR"
+        val preparedStatement = connection.get.prepareStatement(statement)
+
+        //insert years into PreparedStatement
+        for (i <- years.indices) {
+          preparedStatement.setString(i + 1, years(i).toString)
+        }
+        preparedStatement.setString(years.length + 1, customerID)
+        val resultSet = preparedStatement.executeQuery()
+
+        var umsatzMap: Map[String, String] = Map()
+        while(resultSet.next()) {
+          val year = resultSet.getString("GESCHAFTSJAHR")
+          umsatzMap += (year -> resultSet.getBigDecimal("betrag").toString)
+        }
+        return umsatzMap
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    }
+    return Map()
   }
+
 }
 
