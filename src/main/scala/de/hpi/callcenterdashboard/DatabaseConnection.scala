@@ -136,8 +136,8 @@ class DatabaseConnection {
         val salesMap = executeStatementOn(preparedStatement, salesAccount, years.length + 2)
 
         return for (year <- years) yield {
-          val costs: BigDecimal = costsMap.getOrElse(year, 0)
-          val sales: BigDecimal = salesMap.getOrElse(year, 0)
+          val costs: BigDecimal = costsMap.getOrElse(year, 0.00)
+          val sales: BigDecimal = salesMap.getOrElse(year, 0.00)
           (year, sales.toString, (sales + costs).toString)
         }
       } catch {
