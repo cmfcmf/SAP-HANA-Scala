@@ -8,7 +8,7 @@ class Customer(result: ResultSet) {
   val name = result.getString("NAME")
   val town = result.getString("ORT")
   val zip = result.getString("PLZ")
-  val region = result.getString("REGION")
+  val region = if (result.getString("REGION").isEmpty) false else result.getString("REGION")
   val street = result.getString("STRASSE")
   val business = result.getString("BRANCHE")
   val group = result.getString("KUNDENGRUPPE")
