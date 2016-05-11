@@ -24,7 +24,7 @@ class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {
     layoutTemplate("/customer-details", "customer" -> customer, "orders" -> orders, "sales" -> sales)
   }
 
-  val databaseConnection = new DatabaseConnection()
+  val databaseConnection = new DataStore()
 
   override def init(config: ServletConfig): Unit = {
     super.init(config)

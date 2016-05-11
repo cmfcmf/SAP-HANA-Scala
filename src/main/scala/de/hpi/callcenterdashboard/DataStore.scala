@@ -2,7 +2,7 @@ package de.hpi.callcenterdashboard
 // JDBC
 import java.sql.{Connection, DriverManager, PreparedStatement}
 
-class DatabaseConnection {
+class DataStore {
   val credentials = new Credentials()
   val driver = "com.sap.db.jdbc.Driver"
   val url = "jdbc:sap://" + credentials.hostname + ":" + credentials.port
