@@ -43,6 +43,7 @@ class DatabaseConnection {
         return customers
       } else {
         if (plz != "" && name != "") {
+          println(s"search using zip $plz and name $name")
           val sql = "SELECT SCORE() AS score, * FROM SAPQ92.KNA1_HPI " +
             "WHERE CONTAINS(NAME, ?, FUZZY(0.8)) AND CONTAINS(PLZ, ?, FUZZY(0.9)) " +
             "ORDER BY score DESC " +
@@ -53,9 +54,8 @@ class DatabaseConnection {
           val resultSet = preparedStatement.executeQuery()
           var customers: List[Customer] = List.empty
           while (resultSet.next()) {
-            //val temp: List[Customer] = List(new Customer(resultSet))
-            customers :+ new Customer(resultSet)
-            //customers = List.concat(customers, temp)
+            val temp: List[Customer] = List(new Customer(resultSet))
+            customers = List.concat(customers, temp)
           }
           return customers
         }
@@ -77,8 +77,17 @@ class DatabaseConnection {
     return new Customer(resultSet)
   }
 
-  def getOrderOf(customerId : String) : Order = {
-    return new Order()
+  def getOrdersOf(customerId : String) : List[Order] = {
+    val statement =   "SELECT * FROM SAPQ92.ACDOCA_HPI WHERE KUNDE = ?" +
+                      "AND KONTO = 0000893015 ORDER BY BUCHUNGSDATUM DESC LIMIT 10"
+    val preparedStatement = connection.get.prepareStatement(statement)
+    preparedStatement.setString(1, customerId)
+    val resultSet = preparedStatement.executeQuery()
+    var orders: List[Order] = List.empty
+    while (resultSet.next()) {
+      orders = orders :+ new Order(resultSet)
+    }
+    return orders
   }
 
   def getSalesOf(customerID : String) : Map[String, String] = {

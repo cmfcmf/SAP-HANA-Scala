@@ -1,8 +1,9 @@
 package de.hpi.callcenterdashboard
 
 import java.sql.ResultSet
-/*
-class Order(result: ResultSet = Unit) {
+import java.text.SimpleDateFormat
+
+class Order(result: ResultSet) {
   val accountingArea = result.getString("BUCHUNGSKREIS")
   val accountingYear = result.getString("GESCHAFTSJAHR")
   val referenceNumber = result.getString("BELEGNUMMER")
@@ -15,10 +16,8 @@ class Order(result: ResultSet = Unit) {
   val customer = result.getString("KUNDE")
   val workPiece = result.getString("WERK")
   val material = result.getString("MATERIAL")
-  val bookingDate = result.getString("BUCHUNGSDATUM")
-}
-*/
-
-class Order() {
-
+  val ft = new SimpleDateFormat ("yyyyMMdd")
+  val tempDate = ft.parse(result.getString("BUCHUNGSDATUM"))
+  val ft2 = new SimpleDateFormat("yyyy/MM/dd")
+  val bookingDate = ft2.format(tempDate)
 }

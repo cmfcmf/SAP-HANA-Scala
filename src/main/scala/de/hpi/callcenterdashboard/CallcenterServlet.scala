@@ -19,7 +19,7 @@ class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {
     contentType="text/html"
     val customerId = params("id")
     val customer = databaseConnection.getSingleCustomerBy(customerId)
-    val orders = databaseConnection.getOrderOf(customerId)
+    val orders = databaseConnection.getOrdersOf(customerId)
     val sales = databaseConnection.getSalesOf(customerId)
     layoutTemplate("/customer-details", "customer" -> customer, "orders" -> orders)
   }
