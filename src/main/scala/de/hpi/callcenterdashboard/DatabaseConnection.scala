@@ -1,6 +1,6 @@
 package de.hpi.callcenterdashboard
 // JDBC
-import java.sql.{Connection, DriverManager}
+import java.sql.{Connection, DriverManager, PreparedStatement}
 
 class DatabaseConnection {
   val credentials = new Credentials()
@@ -80,43 +80,62 @@ class DatabaseConnection {
     return new Order()
   }
 
-  def getSalesOf(customerID: String, years: List[String]): Map[String, String] = {
+  def executeStatementOn(statement: PreparedStatement, account: String, index: Int): Map[String, BigDecimal] = {
+    statement.setString(index, account)
+    val resultSet = statement.executeQuery()
+    var resultMap: Map[String, BigDecimal] = Map()
+    while(resultSet.next()) {
+      val year = resultSet.getString("GESCHAFTSJAHR")
+      resultMap += (year -> resultSet.getBigDecimal("betrag"))
+    }
+    println(resultMap)
+    return resultMap
+  }
+
+  def generatePreparedStatement(customerID: String, years: List[String]): PreparedStatement = {
+    //create String with format (?,?,?,?) for PreparedStatement
+    var yearString = "(?"
+    for (i <- 1 until years.length) {
+      yearString += ",?"
+    }
+    yearString += ") "
+
+    val statement = "SELECT GESCHAFTSJAHR, SUM(HAUS_BETRAG) as betrag " +
+      "FROM SAPQ92.ACDOCA_HPI " +
+      "WHERE GESCHAFTSJAHR IN " + yearString +
+      "AND KUNDE = ? " +
+      "AND KONTO = ? " +
+      "GROUP BY GESCHAFTSJAHR"
+    val preparedStatement = connection.get.prepareStatement(statement)
+
+    //insert years into PreparedStatement
+    for (i <- years.indices) {
+      preparedStatement.setString(i + 1, years(i).toString)
+    }
+    preparedStatement.setString(years.length + 1, customerID)
+    return preparedStatement
+  }
+
+  def getSalesAndProfitOf(customerID: String, years: List[String]): List[(String, String, String)] = {
+    val salesAccount = "0000893015"
+    val costsAccount = "0000792000"
+
     if (years.nonEmpty) {
       try {
-        //create String with format (?,?,?,?) for PreparedStatement
-        var yearString = "(?"
-        for (i <- 1 until years.length) {
-          yearString += ",?"
-        }
-        yearString += ")"
+        val preparedStatement = generatePreparedStatement(customerID, years)
+        val costsMap = executeStatementOn(preparedStatement, costsAccount, years.length + 2)
+        val salesMap = executeStatementOn(preparedStatement, salesAccount, years.length + 2)
 
-        val statement = "SELECT GESCHAFTSJAHR, SUM(HAUS_BETRAG) as betrag " +
-          "FROM SAPQ92.ACDOCA_HPI " +
-          "WHERE GESCHAFTSJAHR IN " + yearString +
-          " AND KUNDE = ? " +
-          "AND KONTO = '0000893015' " +
-          "GROUP BY GESCHAFTSJAHR"
-        val preparedStatement = connection.get.prepareStatement(statement)
-
-        //insert years into PreparedStatement
-        for (i <- years.indices) {
-          preparedStatement.setString(i + 1, years(i).toString)
+        return for (year <- years) yield {
+          val costs: BigDecimal = costsMap.getOrElse(year, 0)
+          val sales: BigDecimal = salesMap.getOrElse(year, 0)
+          (year, sales.toString, (sales + costs).toString)
         }
-        preparedStatement.setString(years.length + 1, customerID)
-        val resultSet = preparedStatement.executeQuery()
-
-        var umsatzMap: Map[String, String] = Map()
-        while(resultSet.next()) {
-          val year = resultSet.getString("GESCHAFTSJAHR")
-          umsatzMap += (year -> resultSet.getBigDecimal("betrag").toString)
-        }
-        return umsatzMap
       } catch {
         case e: Throwable => e.printStackTrace()
       }
     }
-    return Map()
+    return List(("", "", ""))
   }
-
 }
 
