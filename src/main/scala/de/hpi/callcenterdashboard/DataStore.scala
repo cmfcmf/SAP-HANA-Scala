@@ -11,7 +11,7 @@ class DataStore(credentials: CredentialsTrait) {
   private var connection = None: Option[Connection]
   private val tablePrefix = "SAPQ92"
   private val salesAccount = "0000893015"
-  private val costsAccount = "0000792000"
+  private val profitAccount = "0000792000"
   private val numOrders = 10
   private val numCustomers = 100
   private val years = List("2014", "2013")
@@ -192,6 +192,12 @@ class DataStore(credentials: CredentialsTrait) {
     orders
   }
 
+  /**
+    * Calculate sales and profit values by year for the given customer.
+    *
+    * @param customer A customer.
+    * @return A list of tuples like (year, (salesAmount, currency), (profitAmount, currency))
+    */
   def getSalesAndProfitOf(customer: Customer): List[(String, (BigDecimal, String), (BigDecimal, String))] = {
     var resultMap: Map[(String, String), (BigDecimal, String)] = Map()
     if (years.nonEmpty) {
@@ -207,7 +213,7 @@ class DataStore(credentials: CredentialsTrait) {
           s"FROM $tablePrefix.ACDOCA_HPI " +
           "WHERE GESCHAFTSJAHR IN " + yearString +
           "AND KUNDE = ? " +
-          s"AND KONTO IN ($costsAccount, $salesAccount) " +
+          s"AND KONTO IN ($profitAccount, $salesAccount) " +
           "GROUP BY GESCHAFTSJAHR, KONTO, HAUS_WAEHRUNG"
 
         try {
@@ -231,9 +237,9 @@ class DataStore(credentials: CredentialsTrait) {
     }
 
     for (year <- years) yield {
-      val costs = resultMap.getOrElse((year, costsAccount), (BigDecimal("0.00"), "EUR"))
       val sales = resultMap.getOrElse((year, salesAccount), (BigDecimal("0.00"), "EUR"))
-      (year, sales, (sales._1 + costs._1, costs._2))
+      val profit = resultMap.getOrElse((year, profitAccount), (BigDecimal("0.00"), "EUR"))
+      (year, sales, (sales._1 + profit._1, profit._2))
     }
   }
 }
