@@ -79,8 +79,8 @@
                 {{#sales}}
                     <tr>
                         <td>{{_1}}</td>
-                        <td class="text-right">{{_2}}</td>
-                        <td class="text-right">{{_3}}</td>
+                        <td class="text-right">{{#_2}}{{_2}} {{_1}}{{/_2}}</td>
+                        <td class="text-right">{{#_3}}{{_2}} {{_1}}{{/_3}}</td>
                     </tr>
                 {{/sales}}
                 </tbody>
@@ -96,7 +96,7 @@
     function drawChart() {
         var sales = [
             {{#sales}}
-                ["{{_1}}", {{_2}}, {{_3}}],
+                ["{{_1}}", {{#_2}}"{{_1}}"{{/_2}}, {{#_3}}"{{_1}}"{{/_3}}],
             {{/sales}}
             ['Year', 'Sales', 'Profit']
         ];

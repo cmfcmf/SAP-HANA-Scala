@@ -4,7 +4,7 @@ import java.sql.{Connection, DriverManager, PreparedStatement}
 
 /**
   * DataStore for assignment 1. Requires you to pass a Credentials implementation.
-  * 
+  *
   * @param credentials The database credentials.
   */
 class DataStore(credentials: CredentialsTrait) {
@@ -192,58 +192,49 @@ class DataStore(credentials: CredentialsTrait) {
     orders
   }
 
-  def getSalesAndProfitOf(customer: Customer): List[(String, String, String)] = {
+  def getSalesAndProfitOf(customer: Customer): List[(String, (BigDecimal, String), (BigDecimal, String))] = {
+    var resultMap: Map[(String, String), (BigDecimal, String)] = Map()
     if (years.nonEmpty) {
-      try {
-        val preparedStatement = generatePreparedStatement(customer.customerId, years)
-        val costsMap = executeStatementOn(preparedStatement, costsAccount, years.length + 2)
-        val salesMap = executeStatementOn(preparedStatement, salesAccount, years.length + 2)
-
-        return for (year <- years) yield {
-          val costs: BigDecimal = costsMap.getOrElse(year, 0.00)
-          val sales: BigDecimal = salesMap.getOrElse(year, 0.00)
-          (year, sales.toString, (sales + costs).toString)
+      connection.foreach(connection => {
+        // Create String with format (?,?,?,?) for PreparedStatement
+        var yearString = "(?"
+        for (i <- 1 until years.length) {
+          yearString += ",?"
         }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    }
-    List(("", "", ""))
-  }
+        yearString += ") "
 
-  def executeStatementOn(statement: PreparedStatement, account: String, index: Int): Map[String, BigDecimal] = {
-    statement.setString(index, account)
-    val resultSet = statement.executeQuery()
-    var resultMap: Map[String, BigDecimal] = Map()
-    while (resultSet.next()) {
-      val year = resultSet.getString("GESCHAFTSJAHR")
-      resultMap += (year -> resultSet.getBigDecimal("betrag"))
-    }
-    return resultMap
-  }
+        val sql = "SELECT GESCHAFTSJAHR, KONTO, SUM(HAUS_BETRAG) as amount, HAUS_WAEHRUNG " +
+          s"FROM $tablePrefix.ACDOCA_HPI " +
+          "WHERE GESCHAFTSJAHR IN " + yearString +
+          "AND KUNDE = ? " +
+          s"AND KONTO IN ($costsAccount, $salesAccount) " +
+          "GROUP BY GESCHAFTSJAHR, KONTO, HAUS_WAEHRUNG"
 
-  def generatePreparedStatement(customerID: String, years: List[String]): PreparedStatement = {
-    //create String with format (?,?,?,?) for PreparedStatement
-    var yearString = "(?"
-    for (i <- 1 until years.length) {
-      yearString += ",?"
-    }
-    yearString += ") "
+        try {
+          val preparedStatement = connection.prepareStatement(sql)
+          // Insert years into PreparedStatement
+          for (i <- years.indices) {
+            preparedStatement.setString(i + 1, years(i))
+          }
+          preparedStatement.setString(years.length + 1, customer.customerId)
 
-    val statement = "SELECT GESCHAFTSJAHR, SUM(HAUS_BETRAG) as betrag " +
-      s"FROM $tablePrefix.ACDOCA_HPI " +
-      "WHERE GESCHAFTSJAHR IN " + yearString +
-      "AND KUNDE = ? " +
-      "AND KONTO = ? " +
-      "GROUP BY GESCHAFTSJAHR"
-    val preparedStatement = connection.get.prepareStatement(statement)
-
-    //insert years into PreparedStatement
-    for (i <- years.indices) {
-      preparedStatement.setString(i + 1, years(i).toString)
+          val resultSet = preparedStatement.executeQuery()
+          while (resultSet.next()) {
+            val year = resultSet.getString("GESCHAFTSJAHR")
+            val account = resultSet.getString("KONTO")
+            resultMap += ((year, account) -> (resultSet.getBigDecimal("amount"), resultSet.getString("HAUS_WAEHRUNG")))
+          }
+        } catch {
+          case e: Throwable => printError(e)
+        }
+      })
     }
-    preparedStatement.setString(years.length + 1, customerID)
-    return preparedStatement
+
+    for (year <- years) yield {
+      val costs = resultMap.getOrElse((year, costsAccount), (BigDecimal("0.00"), "EUR"))
+      val sales = resultMap.getOrElse((year, salesAccount), (BigDecimal("0.00"), "EUR"))
+      (year, sales, (sales._1 + costs._1, costs._2))
+    }
   }
 }
 
