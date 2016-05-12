@@ -2,7 +2,12 @@ package de.hpi.callcenterdashboard
 
 import java.sql.{Connection, DriverManager, PreparedStatement}
 
-class DataStore {
+/**
+  * DataStore for assignment 1. Requires you to pass a Credentials implementation.
+  * 
+  * @param credentials The database credentials.
+  */
+class DataStore(credentials: CredentialsTrait) {
   private var connection = None: Option[Connection]
   private val tablePrefix = "SAPQ92"
   private val salesAccount = "0000893015"
@@ -18,7 +23,6 @@ class DataStore {
     try {
       // make the connection
       Class.forName("com.sap.db.jdbc.Driver")
-      val credentials = new Credentials()
       val url = "jdbc:sap://" + credentials.hostname + ":" + credentials.port
       connection = Some(DriverManager.getConnection(url, credentials.username, credentials.password))
     } catch {

@@ -6,7 +6,7 @@ import org.scalatra.ScalatraServlet
 import org.scalatra.scalate.ScalateSupport
 
 trait DataStoreAwareServlet extends ScalatraServlet with ScalateSupport {
-  val dataStore = new DataStore()
+  val dataStore = new DataStore(new Credentials)
 
   override def init(config: ServletConfig): Unit = {
     dataStore.open()
@@ -25,5 +25,7 @@ trait DataStoreAwareServlet extends ScalatraServlet with ScalateSupport {
       templateAttributes("error") = "No connection to database!"
     }
     templateAttributes("isCurrentPage") = (path: String) => if (path == requestPath) "active" else ""
+
+    contentType = "text/html"
   }
 }
