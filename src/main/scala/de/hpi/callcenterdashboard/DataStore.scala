@@ -78,15 +78,23 @@ class DataStore(credentials: CredentialsTrait) {
     * Get all customers matching the given id.
     *
     * @param customerId Customer id
+    * @param fuzzy      Whether or not to use a fuzzy search or a regular LIKE %?% query.
     * @return
     */
-  def getCustomersById(customerId: String): List[Customer] = {
+  def getCustomersById(customerId: String, fuzzy: Boolean = false): List[Customer] = {
     var customers = List.empty[Customer]
     connection.foreach(connection => {
-      val sql = s"SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI " +
-        "WHERE CONTAINS(KUNDE, ?, FUZZY(0.8)) " +
-        "ORDER BY score DESC " +
-        s"LIMIT $numCustomers"
+      var sql = ""
+      if (fuzzy) {
+        sql = s"SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI " +
+          "WHERE CONTAINS(KUNDE, ?, FUZZY(0.5)) " +
+          "ORDER BY score DESC " +
+          s"LIMIT $numCustomers"
+      } else {
+        sql = s"SELECT * FROM $tablePrefix.KNA1_HPI " +
+          "WHERE KUNDE LIKE '%' || ? || '%'" +
+          s"LIMIT $numCustomers"
+      }
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customerId)
