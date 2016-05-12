@@ -92,7 +92,7 @@ class DataStore(credentials: CredentialsTrait) {
           s"LIMIT $numCustomers"
       } else {
         sql = s"SELECT * FROM $tablePrefix.KNA1_HPI " +
-          "WHERE KUNDE LIKE '%' || ? || '%'" +
+          "WHERE LOWER(KUNDE) LIKE LOWER('%' || ? || '%')" +
           s"LIMIT $numCustomers"
       }
       try {
