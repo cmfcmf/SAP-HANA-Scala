@@ -96,7 +96,7 @@
     function drawChart() {
         var sales = [
             {{#sales}}
-                ["{{_1}}", {{#_2}}"{{_1}}"{{/_2}}, {{#_3}}"{{_1}}"{{/_3}}],
+                ["{{_1}}", {{#_2}}parseInt("{{_1}}".replace(/\./g, '')){{/_2}}, {{#_3}}parseInt("{{_1}}".replace(/\./g, '')){{/_3}}],
             {{/sales}}
             ['Year', 'Sales', 'Profit']
         ];
