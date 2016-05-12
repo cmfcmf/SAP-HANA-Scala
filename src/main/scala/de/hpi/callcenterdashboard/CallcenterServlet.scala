@@ -4,14 +4,22 @@ import org.scalatra.scalate.ScalateSupport
 
 class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
   get("/") {
+    contentType = "text/html"
     layoutTemplate("/index")
   }
   post("/find-customer") {
+    contentType = "text/html"
     val customers = dataStore.getCustomersBy(params("customerId"), params("customerName"), params("customerZip"))
-    layoutTemplate("/find-customer", "customers" -> customers)
+    if (customers.length == 1) {
+      // If there only is a single result, redirect user to the customer details page immediately.
+      redirect("/customer/" + customers.head.customerId)
+    } else {
+      layoutTemplate("/find-customer", "customers" -> customers)
+    }
   }
 
   get("/customer/:id") {
+    contentType = "text/html"
     val customerId = params("id")
     val customer = dataStore.getSingleCustomerById(customerId)
     customer.map(customer => {
@@ -23,6 +31,7 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
   }
 
   get("/about") {
+    contentType = "text/html"
     layoutTemplate("/about")
   }
 }
