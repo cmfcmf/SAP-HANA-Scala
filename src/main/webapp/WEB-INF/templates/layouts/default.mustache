@@ -13,6 +13,16 @@
       <script src="/respond.min.js"></script>
     <![endif]-->
     <script src="/jquery-1.12.3.min.js"></script>
+
+    <script>
+      paceOptions = {
+          ajax: { trackMethods: ["GET", "POST", "DELETE", "PUT", "PATCH"] },
+          document: true,
+          restartOnRequestAfter: 50
+      };
+    </script>
+    <script src="/pace.min.js"></script>
+    <link href="/pace.css" rel="stylesheet" />
   </head>
   <body>
 	<nav class="navbar navbar-inverse">
@@ -29,7 +39,8 @@
 
 		<div class="collapse navbar-collapse" id="navbar-collapse">
 		  <ul class="nav navbar-nav">
-			<li class="active"><a href="/">Find customers <span class="sr-only">(current)</span></a></li>
+              <li class="{{#isCurrentPage}}/{{/isCurrentPage}}"><a href="/">Find customers <span class="sr-only">(current)</span></a></li>
+              <li class="{{#isCurrentPage}}/about{{/isCurrentPage}}"><a href="/about">About</a></li>
 		  </ul>
 		  <ul class="nav navbar-nav navbar-right">
 			<li><a href="https://github.com/cmfcmf/sap-hana"><i class="fa fa-external-link fa-fw"></i> GitHub</a></li>

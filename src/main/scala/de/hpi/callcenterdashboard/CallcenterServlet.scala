@@ -24,4 +24,9 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
       layoutTemplate("/customer-details", "customer" -> customer, "orders" -> orders, "sales" -> sales)
     }).getOrElse(resourceNotFound)
   }
+
+  get("/about") {
+    contentType = "text/html"
+    layoutTemplate("/about")
+  }
 }

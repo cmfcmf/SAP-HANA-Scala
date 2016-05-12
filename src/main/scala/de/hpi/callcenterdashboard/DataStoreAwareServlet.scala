@@ -24,5 +24,6 @@ trait DataStoreAwareServlet extends ScalatraServlet with ScalateSupport {
     if (!dataStore.isOpened) {
       templateAttributes("error") = "No connection to database!"
     }
+    templateAttributes("isCurrentPage") = (path: String) => if (path == requestPath) "active" else ""
   }
 }

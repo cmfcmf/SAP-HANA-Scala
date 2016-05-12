@@ -1,12 +1,12 @@
 <div class="list-group">
 {{#customers}}
     <a href="/customer/{{customerId}}" class="list-group-item">
-        <h4 class="list-group-item-heading">{{name}}<small> &raquo; {{customerId}}</h4>
+        <h4 class="list-group-item-heading">{{name}}<small> &raquo; {{customerId}}</small></h4>
         <p class="list-group-item-text">
             <address>
-        <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
-        <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
-        <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{country}}
+                <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
+                <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
+                <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{country}}
             </address>
         </p>
     </a>
