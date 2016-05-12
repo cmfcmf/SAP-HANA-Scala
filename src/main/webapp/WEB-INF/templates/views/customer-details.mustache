@@ -1,20 +1,22 @@
 {{#customer}}
 <div class="row">
-    <div class="col-md-6">
-        <h4 class="list-group-item-heading"><strong>{{customerNumber}}</strong> &raquo; {{name}}</h4>
-        <p class="list-group-item-text">
-            <div>
-                <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
-                <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
-                <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{#region}}{{.}} - {{/region}}{{country}}
-            </div>
-            <dl class="dl-horizontal">
-                <dt>Business</dt><dd>{{business}}</dd>
-                <dt>Customer group</dt><dd>{{group}}</dd>
-            </dl>
-        </p>
+    <div class="col-lg-7 col-md-6 col-sm-7">
+        <h2>{{name}}<small> &raquo; {{customerId}}</small></h2>
+        <address>
+            <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
+            <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
+            <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{#region}}{{.}} - {{/region}}{{country}}
+        </address>
+        <dl class="dl-horizontal">
+            {{#business}}
+                <dt>Business</dt><dd>{{ . }}</dd>
+            {{/business}}
+            {{#group}}
+                <dt>Customer group</dt><dd>{{ . }}</dd>
+            {{/group}}
+        </dl>
     </div>
-    <div class="col-md-6">
+    <div class="col-lg-5 col-md-6 col-sm-5 hidden-xs">
         <div class="embed-responsive embed-responsive-16by9">
             <iframe frameborder="0" style="border:0" class="embed-responsive-item"
                 src="https://www.google.com/maps/embed/v1/place?q={{street}},{{town}},{{country}}&key=AIzaSyCQ_CBTJwSgHKe4IyFf6BxoiEDKh75T76I" allowfullscreen></iframe>
@@ -24,58 +26,90 @@
 {{/customer}}
 <div class="row">
     <div class="col-md-8">
-        <h1>Orders</h1>
-        <table class="table table-striped">
-            <thead>
-            <tr>
-                <th>Date</th>
-                <th>Reference number</th>
-                <th>Workpiece</th>
-                <th>Material</th>
-                <th>Amount (House)</th>
-                <th>Amount (Transaction)</th>
-            </tr>
-            </thead>
-            <tbody>
-            {{#orders}}
+        <h3>Orders</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
                 <tr>
-                    <td>{{bookingDate}}</td>
-                    <td>{{referenceNumber}}</td>
-                    <td>{{workPiece}}</td>
-                    <td>{{material}}</td>
-                    <td>{{houseCurrency}} {{houseAmount}}</td>
-                    <td>{{transactionCurrency}} {{transactionAmount}}</td>
+                    <th>Date</th>
+                    <th>Reference number</th>
+                    <th>Workpiece</th>
+                    <th>Material</th>
+                    <th>Amount (House)</th>
+                    <th>Amount (Transaction)</th>
                 </tr>
-            {{/orders}}
-            {{^orders}}
-                <tr>
-                    <td colspan="6" class="text-center">
-                        <strong>No orders for this customer. Start selling now!</strong>
-                    </td>
-                </tr>
-            {{/orders}}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                {{#orders}}
+                    <tr>
+                        <td>{{bookingDate}}</td>
+                        <td>{{referenceNumber}}</td>
+                        <td>{{workPiece}}</td>
+                        <td>{{material}}</td>
+                        <td class="text-right">{{houseCurrency}} {{houseAmount}}</td>
+                        <td class="text-right">{{transactionCurrency}} {{transactionAmount}}</td>
+                    </tr>
+                {{/orders}}
+                {{^orders}}
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <strong>No orders for this customer. Start selling now!</strong>
+                        </td>
+                    </tr>
+                {{/orders}}
+                </tbody>
+            </table>
+        </div>
     </div>
     <div class="col-md-4">
-        <h1>Sales</h1>
-        <table class="table table-striped">
-            <thead>
-            <tr>
-                <th>Year</th>
-                <th>Sales</th>
-                <th>Profit</th>
-            </tr>
-            </thead>
-            <tbody>
-            {{#sales}}
+        <h3>Sales</h3>
+        <div class="embed-responsive embed-responsive-16by9">
+            <div id="sales_chart" class="embed-responsive-item"></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
                 <tr>
-                    <td>{{_1}}</td>
-                    <td>{{_2}}</td>
-                    <td>{{_3}}</td>
+                    <th>Year</th>
+                    <th>Sales</th>
+                    <th>Profit</th>
                 </tr>
-            {{/sales}}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                {{#sales}}
+                    <tr>
+                        <td>{{_1}}</td>
+                        <td class="text-right">{{_2}}</td>
+                        <td class="text-right">{{_3}}</td>
+                    </tr>
+                {{/sales}}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(drawChart);
+
+    function drawChart() {
+        var sales = [
+            {{#sales}}
+                ["{{_1}}", {{_2}}, {{_3}}],
+            {{/sales}}
+            ['Year', 'Sales', 'Profit']
+        ];
+        var data = google.visualization.arrayToDataTable(sales.reverse());
+
+        var options = {
+            title: 'Sales',
+            curveType: 'none',
+            legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('sales_chart'));
+
+        chart.draw(data, options);
+    }
+</script>

@@ -1,7 +1,7 @@
 <div class="list-group">
 {{#customers}}
-    <a href="/customer/{{customerNumber}}" class="list-group-item">
-        <h4 class="list-group-item-heading"><strong>{{customerNumber}}</strong> &raquo; {{name}}</h4>
+    <a href="/customer/{{customerId}}" class="list-group-item">
+        <h4 class="list-group-item-heading">{{name}}<small> &raquo; {{customerId}}</h4>
         <p class="list-group-item-text">
             <address>
         <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
@@ -9,6 +9,12 @@
         <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{country}}
             </address>
         </p>
+    </a>
+{{/customers}}
+{{^customers}}
+    <a href="/" class="list-group-item list-group-item-danger">
+        <h4 class="list-group-item-heading">No matching results.</h4>
+        <p class="text-danger">Click here to go back to the search form.</p>
     </a>
 {{/customers}}
 </div>
