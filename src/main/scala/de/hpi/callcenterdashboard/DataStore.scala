@@ -204,10 +204,10 @@ class DataStore(credentials: CredentialsTrait) {
     * Calculate sales and profit values by year for the given customer.
     *
     * @param customer A customer.
-    * @return A list of tuples like (year, (salesAmount, currency), (profitAmount, currency))
+    * @return A list of tuples like (year: String, sales: Money, profit: Money)
     */
-  def getSalesAndProfitOf(customer: Customer): List[(String, (BigDecimal, String), (BigDecimal, String))] = {
-    var resultMap: Map[(String, String), (BigDecimal, String)] = Map()
+  def getSalesAndProfitOf(customer: Customer): List[(String, Money, Money)] = {
+    var resultMap: Map[(String, String), Money] = Map()
     if (years.nonEmpty) {
       connection.foreach(connection => {
         // Create String with format (?,?,?,?) for PreparedStatement
@@ -234,9 +234,10 @@ class DataStore(credentials: CredentialsTrait) {
 
           val resultSet = preparedStatement.executeQuery()
           while (resultSet.next()) {
-            val year = resultSet.getString("GESCHAFTSJAHR")
-            val account = resultSet.getString("KONTO")
-            resultMap += ((year, account) -> (resultSet.getBigDecimal("amount"), resultSet.getString("HAUS_WAEHRUNG")))
+            resultMap += (resultSet.getString("GESCHAFTSJAHR"), resultSet.getString("KONTO")) -> Money(
+              resultSet.getBigDecimal("amount"),
+              resultSet.getString("HAUS_WAEHRUNG")
+            )
           }
         } catch {
           case e: Throwable => printError(e)
@@ -245,9 +246,9 @@ class DataStore(credentials: CredentialsTrait) {
     }
 
     for (year <- years) yield {
-      val sales = resultMap.getOrElse((year, salesAccount), (BigDecimal("0.00"), "EUR"))
-      val costs = resultMap.getOrElse((year, costsAccount), (BigDecimal("0.00"), "EUR"))
-      (year, sales, (sales._1 + costs._1, costs._2))
+      val sales = resultMap.getOrElse((year, salesAccount), Money(BigDecimal("0.00"), "EUR"))
+      val costs = resultMap.getOrElse((year, costsAccount), Money(BigDecimal("0.00"), "EUR"))
+      (year, sales, sales + costs)
     }
   }
 }
