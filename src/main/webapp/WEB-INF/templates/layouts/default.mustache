@@ -6,23 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Callcenter Dashboard</title>
 
-	<link href="/bootstrap.min.css" rel="stylesheet" integrity="sha384-2mX2PSpkRSXLQzmNzH3gwK6srb06+OfbDlYjbog8LQuALYJjuQ3+Yzy2JIWNV9rW">
-	<link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
-    <!--[if lt IE 9]>
-      <script src="/html5shiv.min.js"></script>
-      <script src="/respond.min.js"></script>
-    <![endif]-->
-    <script src="/jquery-1.12.3.min.js"></script>
-
     <script>
       paceOptions = {
           ajax: { trackMethods: ["GET", "POST", "DELETE", "PUT", "PATCH"] },
           document: true,
           restartOnRequestAfter: 50
       };
+      if (window.location.pathname.indexOf('/customer/') === 0) {
+          paceOptions['elements'] = {
+              selectors: ["#sales_chart svg"]
+          }
+      }
     </script>
     <script src="/pace.min.js"></script>
     <link href="/pace.css" rel="stylesheet" />
+
+	<link href="/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
+    <!--[if lt IE 9]>
+      <script src="/html5shiv.min.js"></script>
+      <script src="/respond.min.js"></script>
+    <![endif]-->
+    <script src="/jquery-1.12.3.min.js"></script>
   </head>
   <body>
 	<nav class="navbar navbar-inverse">
@@ -64,6 +69,6 @@
 		</div>
 	</div>
 
-    <script src="/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"></script>
+    <script src="/bootstrap.min.js"></script>
   </body>
 </html>
