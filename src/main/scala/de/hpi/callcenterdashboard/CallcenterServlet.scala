@@ -1,40 +1,37 @@
 package de.hpi.callcenterdashboard
 
-import javax.servlet.ServletConfig
 import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends CallcenterDashboardStack with ScalateSupport {
+class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
   get("/") {
-    contentType="text/html"
-
+    contentType = "text/html"
     layoutTemplate("/index")
   }
   post("/find-customer") {
-    contentType="text/html"
-    val customerList = databaseConnection.getCustomerBy(params("customerId"), params("customerName"), params("customerZip"))
-    layoutTemplate("/customer-search", "customers" -> customerList)
+    contentType = "text/html"
+    val customers = dataStore.getCustomersBy(params("customerId"), params("customerName"), params("customerZip"))
+    if (customers.length == 1) {
+      // If there only is a single result, redirect user to the customer details page immediately.
+      redirect("/customer/" + customers.head.customerId)
+    } else {
+      layoutTemplate("/find-customer", "customers" -> customers)
+    }
   }
 
   get("/customer/:id") {
-    contentType="text/html"
+    contentType = "text/html"
     val customerId = params("id")
-    val customer = databaseConnection.getSingleCustomerBy(customerId)
-    val orders = databaseConnection.getOrdersOf(customerId)
-    val sales = databaseConnection.getSalesAndProfitOf(customerId, List("2014", "2013"))
-    layoutTemplate("/customer-details", "customer" -> customer, "orders" -> orders, "sales" -> sales)
+    val customer = dataStore.getSingleCustomerById(customerId)
+    customer.map(customer => {
+      // We found a customer for the given id.
+      val orders = dataStore.getOrdersOf(customer)
+      val sales = dataStore.getSalesAndProfitOf(customer)
+      layoutTemplate("/customer", "customer" -> customer, "orders" -> orders, "sales" -> sales)
+    }).getOrElse(resourceNotFound)
   }
 
-  val databaseConnection = new DataStore()
-
-  override def init(config: ServletConfig): Unit = {
-    super.init(config)
-
-    databaseConnection.open()
-  }
-
-  override def destroy(): Unit = {
-    super.destroy()
-
-    databaseConnection.close()
+  get("/about") {
+    contentType = "text/html"
+    layoutTemplate("/about")
   }
 }

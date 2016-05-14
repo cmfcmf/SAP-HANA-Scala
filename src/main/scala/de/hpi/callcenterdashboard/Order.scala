@@ -1,5 +1,6 @@
 package de.hpi.callcenterdashboard
 
+import java.math.BigDecimal
 import java.sql.ResultSet
 import java.text.SimpleDateFormat
 
@@ -9,9 +10,9 @@ class Order(result: ResultSet) {
   val referenceNumber = result.getString("BELEGNUMMER")
   val debitAndCredit = result.getString("SOLL_HABEN_KEN")
   val account = result.getString("KONTO")
-  val houseAmount = result.getString("HAUS_BETRAG")
+  val houseAmount = result.getBigDecimal("HAUS_BETRAG")
   val houseCurrency = result.getString("HAUS_WAEHRUNG")
-  val transactionAmount = result.getString("TRANSAKTIONS_BETRAG")
+  val transactionAmount = result.getBigDecimal("TRANSAKTIONS_BETRAG")
   val transactionCurrency = result.getString("TRANSAKTIONS_WAEHRUNG")
   val customer = result.getString("KUNDE")
   val workPiece = result.getString("WERK")

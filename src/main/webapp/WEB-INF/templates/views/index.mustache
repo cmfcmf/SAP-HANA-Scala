@@ -1,25 +1,31 @@
-<div class="col-xs-12">
-    <h1>Find customers</h1>
-    <p>Please insert customer id or name and zip code.</p>
+<h1>Find customers</h1>
+<p>Please insert customer id or name and zip code.</p>
 
-    <form class="form" method="post" action="/find-customer">
-        <div class="form-group">
-            <input class="form-control" id="customerId" name="customerId" aria-label="Customer Id" placeholder="Customer Id" type="text">
-        </div>
-        <div class="row">
-            <div class="col-sm-6">
-                <div class="form-group">
-                    <input class="form-control" id="customerName" name="customerName" aria-label="Customer Name" placeholder="Customer Name" type="text">
-                </div>
-            </div>
-            <div class="col-sm-6">
-                <div class="form-group">
-                    <input class="form-control" id="customerZip" name="customerZip" aria-label="Customer Zip code" placeholder="Customer Zip code" type="text">
-                </div>
+<form class="form" method="post" action="/find-customer">
+    <div class="form-group">
+        <input class="form-control" id="customerId" name="customerId" aria-label="Customer Id" placeholder="Customer Id" type="text" autofocus>
+    </div>
+    <hr />
+    <p class="text-center text-uppercase"><b>&laquo; or &raquo;</b></p>
+    <hr />
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="form-group">
+                <input class="form-control" id="customerName" name="customerName" aria-label="Customer Name" placeholder="Customer Name" type="text">
             </div>
         </div>
-        <button type="submit" class="btn btn-block btn-primary">
-            Search
-        </button>
-    </form>
-</div>
+        <div class="col-sm-6">
+            <div class="form-group">
+                <input class="form-control" id="customerZip" name="customerZip" aria-label="Customer Zip code" placeholder="Customer Zip code" type="text">
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-block btn-primary" id="searchButton" data-loading-text="Searching..." >
+        Search
+    </button>
+</form>
+<script>
+    $('#searchButton').on('click', function () {
+        $(this).button('loading')
+    })
+</script>
