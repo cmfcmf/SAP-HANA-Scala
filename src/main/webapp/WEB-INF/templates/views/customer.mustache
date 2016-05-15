@@ -46,8 +46,8 @@
                         <td>{{referenceNumber}}</td>
                         <td>{{workPiece}}</td>
                         <td>{{material}}</td>
-                        <td class="text-right">{{houseCurrency}} {{houseAmount}}</td>
-                        <td class="text-right">{{transactionCurrency}} {{transactionAmount}}</td>
+                        <td class="text-right">{{houseMoney}}</td>
+                        <td class="text-right">{{transactionMoney}}</td>
                     </tr>
                 {{/orders}}
                 {{^orders}}
@@ -79,8 +79,8 @@
                 {{#sales}}
                     <tr>
                         <td>{{_1}}</td>
-                        <td class="text-right">{{#_2}}{{_2}} {{_1}}{{/_2}}</td>
-                        <td class="text-right">{{#_3}}{{_2}} {{_1}}{{/_3}}</td>
+                        <td class="text-right">{{_2}}</td>
+                        <td class="text-right">{{_3}}</td>
                     </tr>
                 {{/sales}}
                 </tbody>
@@ -96,7 +96,7 @@
     function drawChart() {
         var sales = [
             {{#sales}}
-                ["{{_1}}", {{#_2}}parseInt("{{_1}}".replace(/\./g, '')){{/_2}}, {{#_3}}parseInt("{{_1}}".replace(/\./g, '')){{/_3}}],
+                ["{{_1}}", {{#_2}}{{amountAsString}}{{/_2}}, {{#_3}}{{amountAsString}}{{/_3}}],
             {{/sales}}
             ['Year', 'Sales', 'Profit']
         ];
