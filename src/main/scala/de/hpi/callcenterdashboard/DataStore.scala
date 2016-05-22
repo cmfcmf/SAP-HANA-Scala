@@ -251,5 +251,25 @@ class DataStore(credentials: CredentialsTrait) {
       (year, sales, sales + costs)
     }
   }
+
+  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: String): List[Order] = {
+    var orders = List.empty[Order]
+    connection.foreach(connection => {
+      val sql = s"SELECT * FROM $tablePrefix.ACDOCA_HPI WHERE KUNDE = ?" +
+        s"AND KONTO = $costsAccount ORDER BY BUCHUNGSDATUM DESC LIMIT $numOrders"
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, customer.customerId)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          orders = orders :+ new Order(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    orders
+  }
 }
 
