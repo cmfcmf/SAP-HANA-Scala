@@ -25,6 +25,9 @@ class DataStore(credentials: CredentialsTrait) {
       Class.forName("com.sap.db.jdbc.Driver")
       val url = "jdbc:sap://" + credentials.hostname + ":" + credentials.port
       connection = Some(DriverManager.getConnection(url, credentials.username, credentials.password))
+      connection.foreach(connection => {
+        connection.createStatement().execute(s"SET SCHEMA $tablePrefix;")
+      })
     } catch {
       case e: Throwable => printError(e)
     }
@@ -101,7 +104,7 @@ class DataStore(credentials: CredentialsTrait) {
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          customers = customers :+ new Customer(resultSet)
+          customers = customers :+ new Customer(resultSet, getAveragePaymentTimeOfCustomer)
         }
       } catch {
         case e: Throwable => printError(e)
@@ -136,7 +139,7 @@ class DataStore(credentials: CredentialsTrait) {
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          customers = customers :+ new Customer(resultSet)
+          customers = customers :+ new Customer(resultSet, getAveragePaymentTimeOfCustomer)
         }
       } catch {
         case e: Throwable => printError(e)
@@ -163,7 +166,7 @@ class DataStore(credentials: CredentialsTrait) {
 
         val resultSet = preparedStatement.executeQuery()
         if (resultSet.next()) {
-          customer = Some(new Customer(resultSet))
+          customer = Some(new Customer(resultSet, getAveragePaymentTimeOfCustomer))
         }
       } catch {
         case e: Throwable => printError(e)
@@ -255,11 +258,29 @@ class DataStore(credentials: CredentialsTrait) {
   def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: String): List[Order] = {
     var orders = List.empty[Order]
     connection.foreach(connection => {
-      val sql = s"SELECT * FROM $tablePrefix.ACDOCA_HPI WHERE KUNDE = ?" +
-        s"AND KONTO = $costsAccount ORDER BY BUCHUNGSDATUM DESC LIMIT $numOrders"
+      val sql =
+        "SELECT *, amount " +
+        "FROM ( " +
+          "SELECT *, (SUM(HAUS_BETRAG * (-1)) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG * -1)) AS AMOUNT " +
+          s"FROM $tablePrefix.ACDOCA_HPI " +
+          "WHERE KUNDE = ? " +
+          "AND BUCHUNGSDATUM <= ? " +
+          s"AND KONTO = $costsAccount " +
+        ") " +
+        //"WHERE AMOUNT < 5000000"
+        "WHERE AMOUNT < ( " +
+          "SELECT SUM(HAUS_BETRAG) * (-1) as amount " +
+          s"FROM $tablePrefix.ACDOCA_HPI " +
+          "WHERE KUNDE = ? " +
+          "AND BUCHUNGSDATUM <= ? " +
+          s"AND KONTO IN ($costsAccount, $salesAccount) " +
+        ")"
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
+        preparedStatement.setString(2, date)
+        preparedStatement.setString(3, customer.customerId)
+        preparedStatement.setString(4, date)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -271,5 +292,33 @@ class DataStore(credentials: CredentialsTrait) {
     })
     orders
   }
-}
 
+  def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {
+    var averagePaymentTime = 0
+    connection.foreach(connection => {
+      //TODO: Try to understand 01 in WORKDAYS_BETWEEN
+      val sql =
+        "SELECT AVG(PAYMENT_DIFF) AS avgPaymentTime " +
+          "FROM( " +
+          s"SELECT A.KUNDE AS KUNDE, WORKDAYS_BETWEEN('01', A.BUCHUNGSDATUM, B.BUCHUNGSDATUM) AS PAYMENT_DIFF " +
+          s"FROM $tablePrefix.ACDOCA_HPI AS A " +
+          s"JOIN $tablePrefix.ACDOCA_HPI AS B " +
+          s"ON (A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount) " +
+          ") " +
+          "WHERE KUNDE = ? " +
+          "GROUP BY KUNDE"
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, customer.customerId)
+
+        val resultSet = preparedStatement.executeQuery()
+        if (resultSet.next()) {
+          averagePaymentTime = Math.round(resultSet.getFloat("avgPaymentTime"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    averagePaymentTime
+  }
+}
