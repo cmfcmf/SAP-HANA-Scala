@@ -256,22 +256,21 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql =
-        "SELECT *, amount " +
-        "FROM ( " +
-          "SELECT *, (SUM(HAUS_BETRAG * (-1)) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG * -1)) AS AMOUNT " +
-          s"FROM $tablePrefix.ACDOCA_HPI " +
-          "WHERE KUNDE = ? " +
-          "AND BUCHUNGSDATUM <= ? " +
-          s"AND KONTO = $costsAccount " +
-        ") " +
-        //"WHERE AMOUNT < 5000000"
-        "WHERE AMOUNT < ( " +
-          "SELECT SUM(HAUS_BETRAG) * (-1) as amount " +
-          s"FROM $tablePrefix.ACDOCA_HPI " +
-          "WHERE KUNDE = ? " +
-          "AND BUCHUNGSDATUM <= ? " +
-          s"AND KONTO IN ($costsAccount, $salesAccount) " +
-        ")"
+        s"""SELECT *, amount
+            FROM (
+              SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO = $costsAccount
+            )
+            WHERE AMOUNT < (
+              SELECT SUM(HAUS_BETRAG) * (-1) as amount
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO IN ($costsAccount, $salesAccount)
+            )"""
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
