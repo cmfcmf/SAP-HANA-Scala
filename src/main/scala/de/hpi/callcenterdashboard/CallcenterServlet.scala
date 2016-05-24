@@ -1,5 +1,6 @@
 package de.hpi.callcenterdashboard
 
+import de.hpi.utility.FormattedDate._
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -23,9 +24,12 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
 
   get("/customer/:id/:outstanding_orders_date/?") {
     contentType = "text/html"
+    /*
     val date : Date = new Date()
-    val sdf : SimpleDateFormat = new SimpleDateFormat("yyyyMMdd");
-    val formattedDate : String = sdf.format(date);
+    val sdf : SimpleDateFormat = new SimpleDateFormat("yyyyMMdd")
+    val formattedDate : String = sdf.format(date)
+    */
+    val formattedDate = FormattedDate.today_yyyyMMdd
     val outstanding_orders_date : String = params.getOrElse("outstanding_orders_date", formattedDate)
 
     val tempDate = new SimpleDateFormat("yyyyMMdd").parse(outstanding_orders_date)
