@@ -24,6 +24,7 @@
   <link href="/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
   <link href="/datepicker/css/bootstrap-datepicker3.min.css" rel="stylesheet">
+  <link href="/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
   <link rel="stylesheet" href="/custom.css">
   <!--[if lt IE 9]>
   <script src="/html5shiv.min.js"></script>
@@ -88,12 +89,18 @@
 <script src="/bootstrap.min.js"></script>
 <script src="/moment.min.js"></script>
 <script src="/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="/bootstrap-sortable/Scripts/moment.min.js"></script>
+<script src="/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
 <script>
   var options = {
     format: 'yyyy-mm-dd'
   };
   $('#startDate').datepicker(options);
   $('#endDate').datepicker(options);
+
+  $(function () {
+    $.bootstrapSortable({ sign: "arrow reversed" });
+  });
 </script>
 </body>
 </html>
