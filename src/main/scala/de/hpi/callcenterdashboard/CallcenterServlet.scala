@@ -4,9 +4,19 @@ import de.hpi.utility.FormattedDate
 import java.text.SimpleDateFormat
 import java.util.Date
 
+import org.scalatra.{ScalatraParams, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
+class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with SessionSupport {
+  before() {
+    if (params.getOrElse('startDate, "").nonEmpty) session.setAttribute("startDate", params('startDate))
+    if (params.getOrElse('endDate, "").nonEmpty) session.setAttribute("endDate", params('endDate))
+
+    templateAttributes("startDate") = session.getAttribute("startDate")
+    templateAttributes("endDate") = session.getAttribute("endDate")
+    templateAttributes("isGetRequest") = request.getMethod == "GET"
+  }
+
   get("/") {
     contentType = "text/html"
     layoutTemplate("/index")
