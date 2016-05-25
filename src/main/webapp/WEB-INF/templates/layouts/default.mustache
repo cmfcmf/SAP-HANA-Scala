@@ -31,10 +31,19 @@
   <script src="/respond.min.js"></script>
   <![endif]-->
   <script src="/jquery-1.12.3.min.js"></script>
+  <script src="/jquery.pjax.js"></script>
   {{! Needed for charts}}
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   {{! Needed for geo chart}}
   <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+  <script>
+    $(document).pjax('a', 'body', {
+      fragment: 'body'
+    });
+
+    // Load charts for both the cash cow and the world wide sales.
+    google.charts.load('current', {packages: ['corechart', 'geochart']});
+  </script>
 </head>
 <body>
 <nav class="navbar navbar-inverse">
@@ -118,6 +127,9 @@
 
   $(function () {
     $.bootstrapSortable({ sign: "arrow reversed" });
+  });
+  $('body').on('click', 'button[data-loading-text]', function () {
+    $(this).button('loading')
   });
 </script>
 </body>
