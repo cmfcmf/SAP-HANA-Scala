@@ -1,6 +1,8 @@
 <div class="row">
-    <div class="col-md-12">
-        <h3>Cash cow products between {{startDate}} and {{endDate}}</h3>
+  <div class="col-xs-12">
+    <h3>Cash cow products between {{startDate}} and {{endDate}}</h3>
+  </div>
+    <div class="col-md-8">
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
@@ -15,11 +17,11 @@
                     <tr>
                         <td>{{id}}</td>
                         <td>{{name}}</td>
-                        <td class="text-right">{{sales_sum}}</td>
+                        <td class="text-right">{{salesSum}}</td>
                     </tr>
                 {{/products}}
                 {{^products}}
-                    <tr class="success">
+                    <tr class="danger">
                         <td colspan="6" class="text-center">
                             <strong>We did not sell anything. We will be unemployed soon :(</strong>
                         </td>
@@ -29,4 +31,45 @@
             </table>
         </div>
     </div>
+  <div class="col-md-4">
+    <div class="embed-responsive embed-responsive-16by9">
+      <div id="sales_chart" class="embed-responsive-item"></div>
+    </div>
+  </div>
 </div>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
+  google.charts.load('current', {packages: ['corechart', 'bar']});
+  google.charts.setOnLoadCallback(drawChart);
+
+  function drawChart() {
+    var rawData = [
+      ['Product', 'Sales volume', {role: 'style'}, {role: 'annotation'}],
+      {{#products}}
+        ['{{name}}', {{#salesSum}}{{amountAsString}}{{/salesSum}}, '#F0AB00', '{{id}}'],
+      {{/products}}
+    ];
+    if (rawData.length == 1) {
+      // No data to draw a diagram of.
+      return;
+    }
+    var data = google.visualization.arrayToDataTable(rawData);
+
+    var options = {
+      title: 'Cash cows',
+      chartArea: {width: '50%'},
+      vAxis: {
+        title: 'Sales volume',
+        minValue: 0
+      },
+      hAxis: {
+        title: 'Product'
+      },
+      orientation: 'horizontal'
+    };
+
+    var chart = new google.visualization.BarChart(document.getElementById('sales_chart'));
+
+    chart.draw(data, options);
+  }
+</script>

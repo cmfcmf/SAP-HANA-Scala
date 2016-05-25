@@ -21,7 +21,7 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
     }
   }
 
-  get("/customer/:id/") {
+  get("/customer/:id") {
     contentType = "text/html"
 
     val outstanding_orders_date : FormattedDate = new FormattedDate(
