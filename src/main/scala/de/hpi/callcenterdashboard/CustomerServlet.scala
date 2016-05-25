@@ -5,7 +5,7 @@ import de.hpi.utility._
 import org.scalatra.{ScalatraParams, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
+class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
   get("/") {
     contentType = "text/html"
     layoutTemplate("/index")
