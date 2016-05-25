@@ -1,8 +1,11 @@
 package de.hpi.callcenterdashboard
 
+import de.hpi.utility._
+
+import org.scalatra.{ScalatraParams, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
+class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
   get("/") {
     contentType = "text/html"
     layoutTemplate("/index")
@@ -18,15 +21,30 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
     }
   }
 
-  get("/customer/:id") {
+  get("/customer/:id/") {
     contentType = "text/html"
+
+    val outstanding_orders_date : FormattedDate = new FormattedDate(
+      params.getOrElse(
+        "outstanding_orders_date",
+        DateFormatter.today.unformatted
+      )
+    )
+
     val customerId = params("id")
     val customer = dataStore.getSingleCustomerById(customerId)
     customer.map(customer => {
       // We found a customer for the given id.
       val orders = dataStore.getOrdersOf(customer)
       val sales = dataStore.getSalesAndProfitOf(customer)
-      layoutTemplate("/customer", "customer" -> customer, "orders" -> orders, "sales" -> sales)
+      val outstanding_orders = dataStore.getOutstandingOrdersOfCustomerUpTo(customer, outstanding_orders_date)
+      layoutTemplate( "/customer",
+                      "customer" -> customer,
+                      "orders" -> orders,
+                      "sales" -> sales,
+                      "outstanding_orders" -> outstanding_orders,
+                      "outstanding_orders_date" -> outstanding_orders_date,
+                      "outstanding_orders_date_well_formed" -> outstanding_orders_date.toString)
     }).getOrElse(resourceNotFound)
   }
 

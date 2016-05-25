@@ -1,7 +1,7 @@
 package de.hpi.callcenterdashboard
 
 import java.sql.ResultSet
-import java.text.SimpleDateFormat
+import de.hpi.utility._
 
 class Order(result: ResultSet) {
   val accountingArea = result.getString("BUCHUNGSKREIS")
@@ -18,6 +18,5 @@ class Order(result: ResultSet) {
   val customer = result.getString("KUNDE")
   val workPiece = result.getString("WERK")
   val material = result.getString("MATERIAL")
-  private val tempDate = new SimpleDateFormat("yyyyMMdd").parse(result.getString("BUCHUNGSDATUM"))
-  val bookingDate = new SimpleDateFormat("yyyy/MM/dd").format(tempDate)
+  val bookingDate = new FormattedDate(result.getString("BUCHUNGSDATUM"))
 }
