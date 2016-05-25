@@ -21,7 +21,6 @@ trait DateAwareServlet extends ScalatraServlet with ScalateSupport with SessionS
 
     templateAttributes("startDate") = session.getAttribute("startDate")
     templateAttributes("endDate") = session.getAttribute("endDate")
-    templateAttributes("isGetRequest") = request.getMethod == "GET"
   }
 
   def startDate: FormattedDate = {

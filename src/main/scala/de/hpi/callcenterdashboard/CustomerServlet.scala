@@ -7,7 +7,7 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
     contentType = "text/html"
     layoutTemplate("/index")
   }
-  post("/find-customer") {
+  get("/find-customer") {
     contentType = "text/html"
     val customers = dataStore.getCustomersBy(params("customerId"), params("customerName"), params("customerZip"))
     if (customers.length == 1) {
