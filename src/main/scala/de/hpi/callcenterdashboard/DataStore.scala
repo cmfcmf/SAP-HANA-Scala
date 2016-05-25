@@ -270,7 +270,7 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductHitlist(numProducts:Int = 0, startDate:String, endDate:String): List[Product] = {
+  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[Product] = {
     var products = List.empty[Product]
     connection.foreach(connection => {
       val sql =
@@ -285,8 +285,8 @@ class DataStore(credentials: CredentialsTrait) {
         "LIMIT ?"
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate)
-        preparedStatement.setString(2, endDate)
+        preparedStatement.setDate(1, startDate.asSQLDate)
+        preparedStatement.setDate(2, endDate.asSQLDate)
         preparedStatement.setInt(3, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -322,9 +322,9 @@ class DataStore(credentials: CredentialsTrait) {
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setString(2, date.unformatted)
+        preparedStatement.setDate(2, date.asSQLDate)
         preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setString(4, date.unformatted)
+        preparedStatement.setDate(4, date.asSQLDate)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {

@@ -1,5 +1,6 @@
 package de.hpi.utility
 
+import java.sql.SQLData
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -13,6 +14,7 @@ object DateFormatter {
 
 class FormattedDate(date: String, inputFormat: String = "yyyyMMdd") {
   val asDate = new SimpleDateFormat(inputFormat).parse(date)
+  val asSQLDate = new java.sql.Date(asDate.getTime())
 
   def as_yyyyMMdd(separator: String = "/") : String = {
     new SimpleDateFormat(s"yyyy${separator}MM${separator}dd").format(asDate)

@@ -5,7 +5,7 @@ import de.hpi.utility._
 import org.scalatra.{ScalatraParams, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
 
-class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with SessionSupport with DateAwareServlet {
+class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
   get("/") {
     contentType = "text/html"
     layoutTemplate("/index")
@@ -27,7 +27,7 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with S
     val outstanding_orders_date : FormattedDate = new FormattedDate(
       params.getOrElse(
         "outstanding_orders_date",
-        DateFormatter.today().unformatted
+        DateFormatter.today.unformatted
       )
     )
 
