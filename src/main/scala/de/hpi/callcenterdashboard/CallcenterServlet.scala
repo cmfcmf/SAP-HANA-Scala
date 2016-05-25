@@ -1,8 +1,6 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility.FormattedDate
-import java.text.SimpleDateFormat
-import java.util.Date
+import de.hpi.utility._
 
 import org.scalatra.{ScalatraParams, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
@@ -34,16 +32,13 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with S
 
   get("/customer/:id/") {
     contentType = "text/html"
-    /*
-    val date : Date = new Date()
-    val sdf : SimpleDateFormat = new SimpleDateFormat("yyyyMMdd")
-    val formattedDate : String = sdf.format(date)
-    */
-    val formattedDate = FormattedDate.today_yyyyMMdd()
-    val outstanding_orders_date : String = params.getOrElse("outstanding_orders_date", formattedDate)
 
-    val tempDate = new SimpleDateFormat("yyyyMMdd").parse(outstanding_orders_date)
-    val outstanding_orders_date_well_formed = new SimpleDateFormat("yyyy/MM/dd").format(tempDate)
+    val outstanding_orders_date : FormattedDate = new FormattedDate(
+      params.getOrElse(
+        "outstanding_orders_date",
+        DateFormatter.today().unformatted
+      )
+    )
 
     val customerId = params("id")
     val customer = dataStore.getSingleCustomerById(customerId)
@@ -58,7 +53,7 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with S
                       "sales" -> sales,
                       "outstanding_orders" -> outstanding_orders,
                       "outstanding_orders_date" -> outstanding_orders_date,
-                      "outstanding_orders_date_well_formed" -> outstanding_orders_date_well_formed)
+                      "outstanding_orders_date_well_formed" -> outstanding_orders_date.toString)
     }).getOrElse(resourceNotFound)
   }
 

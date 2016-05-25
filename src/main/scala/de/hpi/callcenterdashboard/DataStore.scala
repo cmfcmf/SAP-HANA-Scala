@@ -1,5 +1,6 @@
 package de.hpi.callcenterdashboard
 
+import de.hpi.utility._
 import java.sql.{Connection, DriverManager}
 
 /**
@@ -298,7 +299,7 @@ class DataStore(credentials: CredentialsTrait) {
     products
   }
 
-  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: String): List[Order] = {
+  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
@@ -321,9 +322,9 @@ class DataStore(credentials: CredentialsTrait) {
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setString(2, date)
+        preparedStatement.setString(2, date.unformatted)
         preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setString(4, date)
+        preparedStatement.setString(4, date.unformatted)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
