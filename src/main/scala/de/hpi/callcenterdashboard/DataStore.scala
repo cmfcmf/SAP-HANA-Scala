@@ -476,6 +476,8 @@ class DataStore(credentials: CredentialsTrait) {
             Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
             )
         }
+      } catch {
+        case e: Throwable => printError(e)
       }
     })
 

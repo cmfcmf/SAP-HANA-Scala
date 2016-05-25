@@ -1,0 +1,78 @@
+<div class="row">
+  <div class="col-xs-12">
+    <h3>Cash cow products between {{startDate}} and {{endDate}}</h3>
+  </div>
+  <div class="col-md-8">
+    <div class="table-responsive">
+      <table class="sortable table table-striped">
+        <thead>
+        <tr>
+          <th>Id</th>
+          <th>Name</th>
+          <th class="text-right">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{#products}}
+          <tr>
+            <td>{{id}}</td>
+            <td>{{name}}</td>
+            <td class="text-right" data-value="{{#salesSum}}{{amountAsString}}{{/salesSum}}">{{salesSum}}</td>
+          </tr>
+        {{/products}}
+        {{^products}}
+          <tr class="danger">
+            <td colspan="6" class="text-center">
+              <strong>We did not sell anything. We will be unemployed soon :(</strong>
+            </td>
+          </tr>
+        {{/products}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="embed-responsive embed-responsive-16by9">
+      <div id="sales_chart" class="embed-responsive-item"></div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+  google.charts.setOnLoadCallback(drawSalesChart);
+
+  function drawSalesChart() {
+    var rawData = [
+      ['Product', 'Sales volume', {role: 'style'}, {role: 'annotation'}],
+      {{#products}}
+        ['{{name}}', {{#salesSum}}{{amountAsString}}{{/salesSum}}, '#F0AB00', '{{id}}'],
+      {{/products}}
+    ];
+    if (rawData.length == 1) {
+      // No data to draw a diagram of.
+      return;
+    }
+    var data = google.visualization.arrayToDataTable(rawData);
+
+    var options = {
+      title: 'Cash cows',
+      chartArea: {width: '50%'},
+      vAxis: {
+        title: 'Sales volume',
+        minValue: 0
+      },
+      hAxis: {
+        title: 'Product'
+      },
+      orientation: 'horizontal',
+      animation: {
+        startup: true,
+        duration: 1000,
+        easing: 'out'
+      }
+    };
+
+    var chart = new google.visualization.BarChart(document.getElementById('sales_chart'));
+
+    chart.draw(data, options);
+  }
+</script>
