@@ -317,15 +317,17 @@ class DataStore(credentials: CredentialsTrait) {
     var products = List.empty[Product]
     connection.foreach(connection => {
       val sql =
-        "SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG " +
-        s"FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI " +
-        "WHERE BUCHUNGSDATUM >= ? " + //startDate
-        "AND BUCHUNGSDATUM <= ? " + //endDate
-        s"AND KONTO = $salesAccount " +
-        s"AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER " +
-        "GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG " +
-        "ORDER BY SUM(HAUS_BETRAG) DESC " +
-        "LIMIT ?"
+        s"""
+            SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG
+            FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI
+            WHERE
+              BUCHUNGSDATUM BETWEEN ? AND ?
+              AND KONTO = $salesAccount
+              AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
+            GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG
+            ORDER BY SUM(HAUS_BETRAG) DESC
+            LIMIT ?
+          """
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, startDate.unformatted)
@@ -424,8 +426,7 @@ class DataStore(credentials: CredentialsTrait) {
               AND
               ( ? = ''  OR CONTAINS(LAND, ?, FUZZY(0.8)))
             AND KONTO = $salesAccount
-            AND BUCHUNGSDATUM >= ?
-            AND BUCHUNGSDATUM <= ?
+            AND BUCHUNGSDATUM BETWEEN ? AND ?
             GROUP BY LAND, HAUS_WAEHRUNG
         """
       try {
@@ -460,8 +461,7 @@ class DataStore(credentials: CredentialsTrait) {
             FROM $tablePrefix.ACDOCA_HPI AS a JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
             WHERE
               KONTO = $salesAccount
-              AND BUCHUNGSDATUM >= ?
-              AND BUCHUNGSDATUM <= ?
+              AND BUCHUNGSDATUM BETWEEN ? AND ?
             GROUP BY LAND, HAUS_WAEHRUNG
          """
       try {
