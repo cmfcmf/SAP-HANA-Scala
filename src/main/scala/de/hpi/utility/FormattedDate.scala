@@ -5,15 +5,14 @@ import java.util.Date
 
 object DateFormatter {
 
-  def today() : FormattedDate = {
+  def today : FormattedDate = {
     val today = new Date()
     new FormattedDate(new SimpleDateFormat("yyyyMMdd").format(today))
   }
 }
 
 class FormattedDate(date: String, inputFormat: String = "yyyyMMdd") {
-  private val rawDate = date
-  private val asDate = new SimpleDateFormat(inputFormat).parse(rawDate)
+  val asDate = new SimpleDateFormat(inputFormat).parse(date)
 
   def as_yyyyMMdd(separator: String = "/") : String = {
     new SimpleDateFormat(s"yyyy${separator}MM${separator}dd").format(asDate)
@@ -24,7 +23,7 @@ class FormattedDate(date: String, inputFormat: String = "yyyyMMdd") {
   }
 
   def unformatted : String = {
-    rawDate
+    new SimpleDateFormat("yyyyMMdd").format(asDate)
   }
 
   override def toString : String = {
