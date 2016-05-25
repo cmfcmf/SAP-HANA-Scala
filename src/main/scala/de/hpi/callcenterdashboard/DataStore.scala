@@ -327,8 +327,8 @@ class DataStore(credentials: CredentialsTrait) {
         "LIMIT ?"
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setDate(1, startDate.asSQLDate)
-        preparedStatement.setDate(2, endDate.asSQLDate)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
         preparedStatement.setInt(3, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -364,9 +364,9 @@ class DataStore(credentials: CredentialsTrait) {
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setDate(2, date.asSQLDate)
+        preparedStatement.setString(2, date.unformatted)
         preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setDate(4, date.asSQLDate)
+        preparedStatement.setString(4, date.unformatted)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {

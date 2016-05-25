@@ -6,10 +6,18 @@ import org.scalatra.scalate.ScalateSupport
 
 trait DateAwareServlet extends ScalatraServlet with ScalateSupport with SessionSupport {
   before() {
-    if (params.getOrElse('startDate, "").nonEmpty)
-      session.setAttribute("startDate", new FormattedDate(params('startDate), "yyyy-MM-dd"))
-    if (params.getOrElse('endDate, "").nonEmpty)
-      session.setAttribute("endDate", new FormattedDate(params('endDate), "yyyy-MM-dd"))
+    params.get("startDate").foreach(date => {
+      if (date.nonEmpty)
+        session.setAttribute("startDate", new FormattedDate(date, "yyyy-MM-dd"))
+      else
+        session.removeAttribute("startDate")
+    })
+    params.get("endDate").foreach(date => {
+      if (date.nonEmpty)
+        session.setAttribute("endDate", new FormattedDate(date, "yyyy-MM-dd"))
+      else
+        session.removeAttribute("endDate")
+    })
 
     templateAttributes("startDate") = session.getAttribute("startDate")
     templateAttributes("endDate") = session.getAttribute("endDate")
