@@ -368,4 +368,43 @@ class DataStore(credentials: CredentialsTrait) {
     })
     averagePaymentTime
   }
+
+  def getSalesOfCountryOrRegion(country: String, region: String, startDate: String, endDate: String) : Money = {
+    var salesOfCountryOrRegion = new Money(0, "EUR")
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT SUM(HAUS_BETRAG) AS sales, HAUS_WAEHRUNG
+            FROM $tablePrefix.ACDOCA_HPI AS A JOIN $tablePrefix.KNA1_HPI AS B ON A.KUNDE = B.KUNDE
+            WHERE
+              ( ? = '' OR CONTAINS(REGION, ?, FUZZY(0.8)))
+              AND
+              ( ? = ''  OR CONTAINS(LAND, ?, FUZZY(0.8)))
+            AND KONTO = $salesAccount
+            AND BUCHUNGSDATUM >= ?
+            AND BUCHUNGSDATUM <= ?
+            GROUP BY LAND, HAUS_WAEHRUNG
+        """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, region)
+        preparedStatement.setString(2, region)
+        preparedStatement.setString(3, country)
+        preparedStatement.setString(4, country)
+        preparedStatement.setString(5, startDate)
+        preparedStatement.setString(6, endDate)
+
+        val resultSet = preparedStatement.executeQuery()
+        if (resultSet.next()) {
+          salesOfCountryOrRegion = Money(
+            resultSet.getBigDecimal("sales"),
+            resultSet.getString("HAUS_WAEHRUNG"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    println(salesOfCountryOrRegion)
+    salesOfCountryOrRegion
+  }
 }
