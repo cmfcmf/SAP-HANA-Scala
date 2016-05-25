@@ -32,7 +32,7 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport with S
     }
   }
 
-  get("/customer/:id/:outstanding_orders_date/?") {
+  get("/customer/:id/") {
     contentType = "text/html"
     /*
     val date : Date = new Date()

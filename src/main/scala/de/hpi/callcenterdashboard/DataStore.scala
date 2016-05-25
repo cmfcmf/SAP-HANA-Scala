@@ -269,7 +269,7 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductHitlist(numProducts:Int, startDate:String, endDate:String): List[Product] = {
+  def getProductHitlist(numProducts:Int = 0, startDate:String, endDate:String): List[Product] = {
     var products = List.empty[Product]
     connection.foreach(connection => {
       val sql =
