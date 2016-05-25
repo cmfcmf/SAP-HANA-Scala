@@ -1,7 +1,7 @@
 package de.hpi.callcenterdashboard
 
 import de.hpi.utility._
-import java.sql.{Connection, DriverManager, PreparedStatement}
+import java.sql.{Connection, DriverManager}
 
 /**
   * DataStore for assignment 1. Requires you to pass a Credentials implementation.
@@ -26,9 +26,6 @@ class DataStore(credentials: CredentialsTrait) {
       Class.forName("com.sap.db.jdbc.Driver")
       val url = "jdbc:sap://" + credentials.hostname + ":" + credentials.port
       connection = Some(DriverManager.getConnection(url, credentials.username, credentials.password))
-      connection.foreach(connection => {
-        connection.createStatement().execute(s"SET SCHEMA $tablePrefix;")
-      })
     } catch {
       case e: Throwable => printError(e)
     }
@@ -90,14 +87,18 @@ class DataStore(credentials: CredentialsTrait) {
     connection.foreach(connection => {
       var sql = ""
       if (fuzzy) {
-        sql = s"SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI " +
-          "WHERE CONTAINS(KUNDE, ?, FUZZY(0.5)) " +
-          "ORDER BY score DESC " +
-          s"LIMIT $numCustomers"
+        sql = s"""
+          SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI
+          WHERE CONTAINS(KUNDE, ?, FUZZY(0.5))
+          ORDER BY score DESC
+          LIMIT $numCustomers
+          """
       } else {
-        sql = s"SELECT * FROM $tablePrefix.KNA1_HPI " +
-          "WHERE LOWER(KUNDE) LIKE LOWER('%' || ? || '%')" +
-          s"LIMIT $numCustomers"
+        sql = s"""
+          SELECT * FROM $tablePrefix.KNA1_HPI
+          WHERE LOWER(KUNDE) LIKE LOWER('%' || ? || '%')
+          LIMIT $numCustomers
+          """
       }
       try {
         val preparedStatement = connection.prepareStatement(sql)
@@ -125,18 +126,21 @@ class DataStore(credentials: CredentialsTrait) {
   def getCustomersByZipOrName(name: String, zip: String): List[Customer] = {
     var customers = List.empty[Customer]
     connection.foreach(connection => {
-      var sql = s"SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI WHERE "
-      if (name != "") sql += "CONTAINS(NAME, ?, FUZZY(0.8))"
-      if (zip != "") {
-        if (name != "") sql += " AND "
-        sql += "CONTAINS(PLZ, ?, FUZZY(0.9))"
-      }
-      sql += s"ORDER BY score DESC LIMIT $numCustomers"
-
+      val sql = s"""
+              SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI
+              WHERE
+                (? = '' OR CONTAINS(NAME, ?, FUZZY(0.8)))
+                AND
+                (? = ''  OR CONTAINS(PLZ, ?, FUZZY(0.9)))
+              ORDER BY score DESC
+              LIMIT $numCustomers
+              """
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        if (name != "") preparedStatement.setString(1, name)
-        if (zip != "") preparedStatement.setString(if (name != "") 2 else 1, zip)
+        preparedStatement.setString(1, name)
+        preparedStatement.setString(2, name)
+        preparedStatement.setString(3, zip)
+        preparedStatement.setString(4, zip)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -186,8 +190,15 @@ class DataStore(credentials: CredentialsTrait) {
   def getOrdersOf(customer: Customer): List[Order] = {
     var orders = List.empty[Order]
     connection.foreach(connection => {
-      val sql = s"SELECT * FROM $tablePrefix.ACDOCA_HPI WHERE KUNDE = ?" +
-        s"AND KONTO = $salesAccount ORDER BY BUCHUNGSDATUM DESC LIMIT $numOrders"
+      val sql = s"""
+              SELECT * FROM $tablePrefix.ACDOCA_HPI
+              WHERE
+                KUNDE = ?
+                AND
+                KONTO = $salesAccount
+              ORDER BY BUCHUNGSDATUM DESC
+              LIMIT $numOrders
+              """
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
@@ -221,12 +232,15 @@ class DataStore(credentials: CredentialsTrait) {
         }
         yearString += ") "
 
-        val sql = "SELECT GESCHAFTSJAHR, KONTO, SUM(HAUS_BETRAG) as amount, HAUS_WAEHRUNG " +
-          s"FROM $tablePrefix.ACDOCA_HPI " +
-          "WHERE GESCHAFTSJAHR IN " + yearString +
-          "AND KUNDE = ? " +
-          s"AND KONTO IN ($costsAccount, $salesAccount) " +
-          "GROUP BY GESCHAFTSJAHR, KONTO, HAUS_WAEHRUNG"
+        val sql = s"""
+          SELECT GESCHAFTSJAHR, KONTO, SUM(HAUS_BETRAG) as amount, HAUS_WAEHRUNG
+          FROM $tablePrefix.ACDOCA_HPI
+          WHERE
+            GESCHAFTSJAHR IN $yearString
+            AND KUNDE = ?
+            AND KONTO IN ($costsAccount, $salesAccount)
+          GROUP BY GESCHAFTSJAHR, KONTO, HAUS_WAEHRUNG
+          """
 
         try {
           val preparedStatement = connection.prepareStatement(sql)
@@ -256,26 +270,55 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
+  def getProductHitlist(numProducts:Int, startDate:String, endDate:String): List[Product] = {
+    var products = List.empty[Product]
+    connection.foreach(connection => {
+      val sql =
+        "SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG " +
+        s"FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI " +
+        "WHERE BUCHUNGSDATUM >= ? " + //startDate
+        "AND BUCHUNGSDATUM <= ? " + //endDate
+        s"AND KONTO = $salesAccount " +
+        s"AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER " +
+        "GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG " +
+        "ORDER BY SUM(HAUS_BETRAG) DESC " +
+        "LIMIT ?"
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate)
+        preparedStatement.setString(2, endDate)
+        preparedStatement.setInt(3, numProducts)
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          products = products :+ new Product(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    products
+  }
+
   def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
     var orders = List.empty[Order]
     connection.foreach(connection => {
-      val sql =
-        "SELECT *, amount " +
-        "FROM ( " +
-          "SELECT *, (SUM(HAUS_BETRAG * (-1)) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG * -1)) AS AMOUNT " +
-          s"FROM $tablePrefix.ACDOCA_HPI " +
-          "WHERE KUNDE = ? " +
-          "AND BUCHUNGSDATUM <= ? " +
-          s"AND KONTO = $costsAccount " +
-        ") " +
-        //"WHERE AMOUNT < 5000000"
-        "WHERE AMOUNT < ( " +
-          "SELECT SUM(HAUS_BETRAG) * (-1) as amount " +
-          s"FROM $tablePrefix.ACDOCA_HPI " +
-          "WHERE KUNDE = ? " +
-          "AND BUCHUNGSDATUM <= ? " +
-          s"AND KONTO IN ($costsAccount, $salesAccount) " +
-        ")"
+      val sql = s"""
+            SELECT *, amount
+            FROM (
+              SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO = $costsAccount
+            )
+            WHERE AMOUNT < (
+              SELECT SUM(HAUS_BETRAG) * (-1) as amount
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO IN ($costsAccount, $salesAccount)
+            )
+        """
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
@@ -297,17 +340,20 @@ class DataStore(credentials: CredentialsTrait) {
   def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {
     var averagePaymentTime = 0
     connection.foreach(connection => {
-      //TODO: Try to understand 01 in WORKDAYS_BETWEEN
-      val sql =
-        "SELECT AVG(PAYMENT_DIFF) AS avgPaymentTime " +
-          "FROM( " +
-          s"SELECT A.KUNDE AS KUNDE, WORKDAYS_BETWEEN('01', A.BUCHUNGSDATUM, B.BUCHUNGSDATUM) AS PAYMENT_DIFF " +
-          s"FROM $tablePrefix.ACDOCA_HPI AS A " +
-          s"JOIN $tablePrefix.ACDOCA_HPI AS B " +
-          s"ON (A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount) " +
-          ") " +
-          "WHERE KUNDE = ? " +
-          "GROUP BY KUNDE"
+      val sql = s"""
+              SELECT AVG(paymentDiff) AS avgPaymentTime
+              FROM(
+                SELECT
+                  A.KUNDE AS KUNDE,
+                  WORKDAYS_BETWEEN('01', A.BUCHUNGSDATUM, B.BUCHUNGSDATUM, '$tablePrefix') AS paymentDiff
+                FROM $tablePrefix.ACDOCA_HPI AS A
+                JOIN $tablePrefix.ACDOCA_HPI AS B ON (
+                  A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount
+                )
+              )
+              WHERE KUNDE = ?
+              GROUP BY KUNDE
+        """
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
