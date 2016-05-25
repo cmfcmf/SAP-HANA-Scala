@@ -251,5 +251,34 @@ class DataStore(credentials: CredentialsTrait) {
       (year, sales, sales + costs)
     }
   }
+
+  def getProductHitlist(numProducts:Int, startDate:String, endDate:String): List[Product] = {
+    var products = List.empty[Product]
+    connection.foreach(connection => {
+      val sql =
+        "SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG " +
+        s"FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI " +
+        "WHERE BUCHUNGSDATUM >= ? " + //startDate
+        "AND BUCHUNGSDATUM <= ? " + //endDate
+        s"AND KONTO = $salesAccount " +
+        s"AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER " +
+        "GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG " +
+        "ORDER BY SUM(HAUS_BETRAG) DESC " +
+        "LIMIT ?"
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate)
+        preparedStatement.setString(2, endDate)
+        preparedStatement.setInt(3, numProducts)
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          products = products :+ new Product(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    products
+  }
 }
 
