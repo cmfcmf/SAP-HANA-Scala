@@ -3,21 +3,31 @@ package de.hpi.utility
 import java.text.SimpleDateFormat
 import java.util.Date
 
-object FormattedDate {
+object DateFormatter {
 
-  implicit class StringFormatter(val date: String) {
-    def as_yyyyMMdd(separator: String = "/", inputFormat: String = "yyyyMMdd") = {
-      var result = today_yyyyMMdd()
+  def today() : FormattedDate = {
+    val today = new Date()
+    new FormattedDate(new SimpleDateFormat("yyyyMMdd").format(today))
+  }
+}
 
-      if (date.length > 0) {
-        val formatter = new SimpleDateFormat(inputFormat).parse(date)
-        result = new SimpleDateFormat(s"yyyy${separator}MM${separator}dd").format(formatter)
-      }
-    }
+class FormattedDate(date: String, inputFormat: String = "yyyyMMdd") {
+  private val rawDate = date
+  private val asDate = new SimpleDateFormat(inputFormat).parse(rawDate)
+
+  def as_yyyyMMdd(separator: String = "/") : String = {
+    new SimpleDateFormat(s"yyyy${separator}MM${separator}dd").format(asDate)
   }
 
-  def today_yyyyMMdd(separator: String = "/"): String = {
-    val today : Date = new Date()
-    new SimpleDateFormat(s"yyyy${separator}MM${separator}dd").format(today)
+  def as_ddMMyyyy(separator: String = ".") : String = {
+    new SimpleDateFormat(s"dd${separator}MM${separator}yyyy").format(asDate)
+  }
+
+  def unformatted : String = {
+    rawDate
+  }
+
+  override def toString : String = {
+    as_yyyyMMdd()
   }
 }
