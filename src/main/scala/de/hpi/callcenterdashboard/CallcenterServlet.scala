@@ -1,6 +1,6 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility.FormattedDate._
+import de.hpi.utility._
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -29,11 +29,18 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
     val sdf : SimpleDateFormat = new SimpleDateFormat("yyyyMMdd")
     val formattedDate : String = sdf.format(date)
     */
-    val formattedDate = FormattedDate.today_yyyyMMdd
-    val outstanding_orders_date : String = params.getOrElse("outstanding_orders_date", formattedDate)
 
+    val outstanding_orders_date : FormattedDate = new FormattedDate (
+                                                                      params.getOrElse
+                                                                      (
+                                                                        "outstanding_orders_date",
+                                                                        DateFormatter.today().unformatted
+                                                                      )
+                                                                    )
+    /*
     val tempDate = new SimpleDateFormat("yyyyMMdd").parse(outstanding_orders_date)
-    val outstanding_orders_date_well_formed = new SimpleDateFormat("yyyy/MM/dd").format(tempDate)
+    val outstanding_orders_date_well_formed : String = outstanding_orders_date.as_yyyyMMdd()
+    */
 
     val customerId = params("id")
     val customer = dataStore.getSingleCustomerById(customerId)
@@ -48,7 +55,7 @@ class CallcenterServlet extends DataStoreAwareServlet with ScalateSupport {
                       "sales" -> sales,
                       "outstanding_orders" -> outstanding_orders,
                       "outstanding_orders_date" -> outstanding_orders_date,
-                      "outstanding_orders_date_well_formed" -> outstanding_orders_date_well_formed)
+                      "outstanding_orders_date_well_formed" -> outstanding_orders_date.toString)
     }).getOrElse(resourceNotFound)
   }
 
