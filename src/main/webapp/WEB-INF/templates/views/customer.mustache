@@ -27,7 +27,7 @@
 {{/customer}}
 <div class="row">
     <div class="col-md-8">
-        <h3>Outstanding orders until {{outstanding_orders_date_well_formed}}</h3>
+        <h3>Outstanding orders until {{outstanding_orders_date}}</h3>
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
@@ -125,11 +125,6 @@
 </div>
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <script type="text/javascript">
-    $('#dp1').datepicker({
-        format: 'yyyymmdd'
-    }).on('changeDate', function(ev) {
-        window.location = window.location.href +'/../'+ev.date
-    });
     google.charts.load('current', {'packages':['corechart']});
     google.charts.setOnLoadCallback(drawChart);
 

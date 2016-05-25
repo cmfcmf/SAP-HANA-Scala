@@ -1,6 +1,6 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility.FormattedDate
+import de.hpi.utility.{DateFormatter, FormattedDate}
 import org.scalatra.{ScalatraServlet, SessionSupport}
 import org.scalatra.scalate.ScalateSupport
 
@@ -14,5 +14,19 @@ trait DateAwareServlet extends ScalatraServlet with ScalateSupport with SessionS
     templateAttributes("startDate") = session.getAttribute("startDate")
     templateAttributes("endDate") = session.getAttribute("endDate")
     templateAttributes("isGetRequest") = request.getMethod == "GET"
+  }
+
+  def startDate: FormattedDate = {
+    session.getAttribute("startDate") match {
+      case date: FormattedDate => date
+      case _ => DateFormatter.past
+    }
+  }
+
+  def endDate: FormattedDate = {
+    session.getAttribute("endDate") match {
+      case date: FormattedDate => date
+      case _ => DateFormatter.today
+    }
   }
 }

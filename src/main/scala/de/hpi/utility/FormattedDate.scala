@@ -1,14 +1,15 @@
 package de.hpi.utility
 
-import java.sql.SQLData
 import java.text.SimpleDateFormat
 import java.util.Date
 
 object DateFormatter {
-
-  def today : FormattedDate = {
+  def today: FormattedDate = {
     val today = new Date()
     new FormattedDate(new SimpleDateFormat("yyyyMMdd").format(today))
+  }
+  def past: FormattedDate = {
+    new FormattedDate("19900101")
   }
 }
 
@@ -27,6 +28,7 @@ class FormattedDate(date: String, inputFormat: String = "yyyyMMdd") {
   def unformatted : String = {
     new SimpleDateFormat("yyyyMMdd").format(asDate)
   }
+  def forDatePicker: String = as_yyyyMMdd("-")
 
   override def toString : String = {
     as_yyyyMMdd()

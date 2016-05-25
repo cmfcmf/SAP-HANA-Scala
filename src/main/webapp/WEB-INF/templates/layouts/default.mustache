@@ -22,15 +22,14 @@
   <link href="/pace.css" rel="stylesheet"/>
 
   <link href="/bootstrap.min.css" rel="stylesheet">
-  <link href="/datepicker.css" rel="stylesheet">
   <link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
+  <link href="/datepicker/css/bootstrap-datepicker3.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/custom.css">
   <!--[if lt IE 9]>
   <script src="/html5shiv.min.js"></script>
   <script src="/respond.min.js"></script>
   <![endif]-->
   <script src="/jquery-1.12.3.min.js"></script>
-  <script src="/bootstrap-datepicker.js"></script>
 </head>
 <body>
 <nav class="navbar navbar-inverse">
@@ -58,10 +57,10 @@
       {{#isGetRequest}}
         <form class="navbar-form navbar-right" method="get">
           <div class="form-group">
-            <input type="date" class="form-control" placeholder="start date" value="{{startDate}}" name="startDate">
+            <input type="date" class="form-control" placeholder="start date" value="{{#startDate}}{{forDatePicker}}{{/startDate}}" name="startDate" id="startDate">
           </div>
           <div class="form-group">
-            <input type="date" class="form-control" placeholder="end date" value="{{endDate}}" name="endDate">
+            <input type="date" class="form-control" placeholder="end date" value="{{#endDate}}{{forDatePicker}}{{/endDate}}" name="endDate" id="endDate">
           </div>
           <button type="submit" class="btn btn-default">Save</button>
         </form>
@@ -87,5 +86,14 @@
 </div>
 
 <script src="/bootstrap.min.js"></script>
+<script src="/moment.min.js"></script>
+<script src="/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script>
+  var options = {
+    format: 'yyyy-mm-dd'
+  };
+  $('#startDate').datepicker(options);
+  $('#endDate').datepicker(options);
+</script>
 </body>
 </html>
