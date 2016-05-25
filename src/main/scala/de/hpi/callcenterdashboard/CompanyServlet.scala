@@ -6,6 +6,7 @@ class CompanyServlet extends DataStoreAwareServlet with ScalateSupport with Date
   get("/statistics") {
     contentType = "text/html"
     val salesHitlist = dataStore.getProductHitlist(10, startDate, endDate)
-    layoutTemplate("/company-statistics", "products" -> salesHitlist)
+    val worldWideSales = dataStore.getWorldWideSales(startDate, endDate)
+    layoutTemplate("/company-statistics", "products" -> salesHitlist, "worldWideSales" -> worldWideSales)
   }
 }

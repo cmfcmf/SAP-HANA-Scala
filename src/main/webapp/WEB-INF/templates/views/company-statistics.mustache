@@ -37,12 +37,45 @@
     </div>
   </div>
 </div>
+<div class="row">
+  <div class="col-xs-12">
+    <h3>World-wide sales</h3>
+    <div class="embed-responsive embed-responsive-16by9">
+      <div id="world_chart" class="embed-responsive-item"></div>
+    </div>
+  </div>
+</div>
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript">
-  google.charts.load('current', {packages: ['corechart', 'bar']});
-  google.charts.setOnLoadCallback(drawChart);
+  google.charts.load('current', {packages: ['corechart', 'geochart']});
+  google.charts.setOnLoadCallback(drawCharts);
 
-  function drawChart() {
+  function drawCharts() {
+    drawSalesChart();
+    drawWorldWideSalesChart();
+  }
+
+  function drawWorldWideSalesChart() {
+    var data = google.visualization.arrayToDataTable([
+      ['Country', 'Sales'],
+      {{#worldWideSales}}
+        ['{{_1}}', {{#_2}}{{amountAsString}}{{/_2}}],
+      {{/worldWideSales}}
+    ]);
+
+    var options = {
+      colorAxis: {
+        colors: ['FFFFFF', '#F0AB00']
+      }
+    };
+
+    var chart = new google.visualization.GeoChart(document.getElementById('world_chart'));
+
+    chart.draw(data, options);
+  }
+
+  function drawSalesChart() {
     var rawData = [
       ['Product', 'Sales volume', {role: 'style'}, {role: 'annotation'}],
       {{#products}}

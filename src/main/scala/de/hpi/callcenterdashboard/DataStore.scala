@@ -16,6 +16,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val numOrders = 10
   private val numCustomers = 100
   private val years = List("2014", "2013")
+  private val houseCurrency = "EUR"
 
   /**
     * Opens the database connection.
@@ -264,8 +265,8 @@ class DataStore(credentials: CredentialsTrait) {
     }
 
     for (year <- years) yield {
-      val sales = resultMap.getOrElse((year, salesAccount), Money(BigDecimal("0.00"), "EUR"))
-      val costs = resultMap.getOrElse((year, costsAccount), Money(BigDecimal("0.00"), "EUR"))
+      val sales = resultMap.getOrElse((year, salesAccount), Money(BigDecimal("0.00"), houseCurrency))
+      val costs = resultMap.getOrElse((year, costsAccount), Money(BigDecimal("0.00"), houseCurrency))
       (year, sales, sales + costs)
     }
   }
@@ -412,7 +413,7 @@ class DataStore(credentials: CredentialsTrait) {
   }
 
   def getSalesOfCountryOrRegion(country: String, region: String, startDate: String, endDate: String) : Money = {
-    var salesOfCountryOrRegion = new Money(0, "EUR")
+    var salesOfCountryOrRegion = new Money(0, houseCurrency)
     connection.foreach(connection => {
       val sql =
         s"""
@@ -448,5 +449,36 @@ class DataStore(credentials: CredentialsTrait) {
     })
     println(salesOfCountryOrRegion)
     salesOfCountryOrRegion
+  }
+
+  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money)] = {
+    var sales = List.empty[(String, Money)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, LAND
+            FROM $tablePrefix.ACDOCA_HPI AS a JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
+            WHERE
+              KONTO = $salesAccount
+              AND BUCHUNGSDATUM >= ?
+              AND BUCHUNGSDATUM <= ?
+            GROUP BY LAND, HAUS_WAEHRUNG
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          sales = sales :+ (
+            resultSet.getString("LAND"),
+            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
+        }
+      }
+    })
+
+    sales
   }
 }
