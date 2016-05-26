@@ -192,7 +192,10 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
-              SELECT * FROM $tablePrefix.ACDOCA_HPI
+              SELECT *
+              FROM $tablePrefix.ACDOCA_HPI a
+              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
+              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
               WHERE
                 KUNDE = ?
                 AND
@@ -351,7 +354,9 @@ class DataStore(credentials: CredentialsTrait) {
             SELECT *, amount
             FROM (
               SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
-              FROM $tablePrefix.ACDOCA_HPI
+              FROM $tablePrefix.ACDOCA_HPI a
+              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
+              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
               WHERE KUNDE = ?
               AND BUCHUNGSDATUM <= ?
               AND KONTO = $costsAccount
@@ -452,6 +457,14 @@ class DataStore(credentials: CredentialsTrait) {
     salesOfCountryOrRegion
   }
 
+  /**
+    * Given a start and end date, return a list of tuples of (Country, SalesSum) for each country
+    * where we sold something. The SalesSum is the sum of all sales for that country.
+    *
+    * @param startDate The start date.
+    * @param endDate   The end date.
+    * @return
+    */
   def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money)] = {
     var sales = List.empty[(String, Money)]
     connection.foreach(connection => {

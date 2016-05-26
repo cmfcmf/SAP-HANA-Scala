@@ -35,7 +35,7 @@
                     <th>Date</th>
                     <th>Reference number</th>
                     <th>Workpiece</th>
-                    <th>Material</th>
+                    <th>Factory</th>
                     <th>Amount (House)</th>
                     <th>Amount (Transaction)</th>
                 </tr>
@@ -45,8 +45,16 @@
                     <tr class="danger">
                         <td>{{bookingDate}}</td>
                         <td>{{referenceNumber}}</td>
-                        <td>{{workPiece}}</td>
-                        <td>{{material}}</td>
+                        <td>
+                          {{#workPiece}}
+                            <abbr title="{{id}}">{{name}}</abbr>
+                          {{/workPiece}}
+                        </td>
+                        <td>
+                          {{#factory}}
+                            <abbr title="{{address}}">{{name}}</abbr>
+                          {{/factory}}
+                        </td>
                         <td class="text-right" data-value="{{#houseMoney}}{{amountAsString}}{{/houseMoney}}">{{houseMoney}}</td>
                         <td class="text-right" data-value="{{#transactionMoney}}{{amountAsString}}{{/transactionMoney}}">{{transactionMoney}}</td>
                     </tr>
@@ -69,7 +77,7 @@
                     <th>Date</th>
                     <th>Reference number</th>
                     <th>Workpiece</th>
-                    <th>Material</th>
+                    <th>Factory</th>
                     <th>Amount (House)</th>
                     <th>Amount (Transaction)</th>
                 </tr>
@@ -79,8 +87,16 @@
                     <tr>
                         <td>{{bookingDate}}</td>
                         <td>{{referenceNumber}}</td>
-                        <td>{{workPiece}}</td>
-                        <td>{{material}}</td>
+                        <td>
+                          {{#workPiece}}
+                            <abbr title="{{id}}">{{name}}</abbr>
+                          {{/workPiece}}
+                        </td>
+                        <td>
+                          {{#factory}}
+                            <abbr title="{{address}}">{{name}}</abbr>
+                          {{/factory}}
+                        </td>
                         <td class="text-right" data-value="{{#houseMoney}}{{amountAsString}}{{/houseMoney}}">{{houseMoney}}</td>
                         <td class="text-right" data-value="{{#transactionMoney}}{{amountAsString}}{{/transactionMoney}}">{{transactionMoney}}</td>
                     </tr>

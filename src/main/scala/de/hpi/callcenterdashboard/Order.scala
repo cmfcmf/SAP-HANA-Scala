@@ -7,7 +7,6 @@ class Order(result: ResultSet) {
   val accountingArea = result.getString("BUCHUNGSKREIS")
   val accountingYear = result.getString("GESCHAFTSJAHR")
   val referenceNumber = result.getString("BELEGNUMMER")
-  val debitAndCredit = result.getString("SOLL_HABEN_KEN")
   val account = result.getString("KONTO")
   val houseMoney = Money(
     result.getBigDecimal("HAUS_BETRAG"),
@@ -16,7 +15,7 @@ class Order(result: ResultSet) {
     result.getBigDecimal("TRANSAKTIONS_BETRAG"),
     result.getString("TRANSAKTIONS_WAEHRUNG"))
   val customer = result.getString("KUNDE")
-  val workPiece = result.getString("WERK")
-  val material = result.getString("MATERIAL")
+  val factory = new Factory(result)
+  val workPiece = new Workpiece(result)
   val bookingDate = new FormattedDate(result.getString("BUCHUNGSDATUM"))
 }
