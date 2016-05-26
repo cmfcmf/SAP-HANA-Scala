@@ -1,6 +1,7 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility._
+import de.hpi.callcenterdashboard.entity.{Order, Money, Customer}
+import de.hpi.callcenterdashboard.utility._
 import java.sql.{Connection, DriverManager}
 
 /**
@@ -271,8 +272,8 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductSalesPercent(customerId: String, startDate: String, endDate: String): List[(Product, Float)] = {
-    var products = List.empty[(Product, Float)]
+  def getProductSalesPercent(customerId: String, startDate: String, endDate: String): List[(entity.Product, Float)] = {
+    var products = List.empty[(entity.Product, Float)]
     connection.foreach(connection => {
       val totalAmountQuery = s"""
         SELECT SUM(HAUS_BETRAG) AS TOTAL_AMOUNT
@@ -304,7 +305,7 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(6, customerId)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          products = products :+ (new Product(resultSet), resultSet.getFloat("PERCENTAGE") * 100)
+          products = products :+ (new entity.Product(resultSet), resultSet.getFloat("PERCENTAGE") * 100)
         }
       } catch {
         case e: Throwable => printError(e)
@@ -313,8 +314,8 @@ class DataStore(credentials: CredentialsTrait) {
     products
   }
 
-  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[Product] = {
-    var products = List.empty[Product]
+  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[entity.Product] = {
+    var products = List.empty[entity.Product]
     connection.foreach(connection => {
       val sql =
         s"""
@@ -335,7 +336,7 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setInt(3, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          products = products :+ new Product(resultSet)
+          products = products :+ new entity.Product(resultSet)
         }
       } catch {
         case e: Throwable => printError(e)
