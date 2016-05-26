@@ -1,4 +1,4 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.entity
 
 import java.sql.ResultSet
 

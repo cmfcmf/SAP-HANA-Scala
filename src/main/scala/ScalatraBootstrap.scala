@@ -1,6 +1,7 @@
-import de.hpi.callcenterdashboard._
-import org.scalatra._
 import javax.servlet.ServletContext
+
+import de.hpi.callcenterdashboard.controller.{CompanyServlet, CustomerServlet}
+import org.scalatra._
 
 class ScalatraBootstrap extends LifeCycle {
   override def init(context: ServletContext) {

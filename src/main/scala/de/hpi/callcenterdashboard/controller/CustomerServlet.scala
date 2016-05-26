@@ -1,12 +1,13 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.controller
 
 import org.scalatra.scalate.ScalateSupport
 
 class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
   get("/") {
     contentType = "text/html"
-    layoutTemplate("/index")
+    layoutTemplate("/customer/search")
   }
+
   get("/find-customer") {
     contentType = "text/html"
     val customers = dataStore.getCustomersBy(params("customerId"), params("customerName"), params("customerZip"))
@@ -14,7 +15,7 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
       // If there only is a single result, redirect user to the customer details page immediately.
       redirect("/customer/" + customers.head.customerId)
     } else {
-      layoutTemplate("/find-customer", "customers" -> customers)
+      layoutTemplate("/customer/search-results", "customers" -> customers)
     }
   }
 
@@ -29,7 +30,7 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
       val sales = dataStore.getSalesAndProfitOf(customer)
       val outstanding_orders = dataStore.getOutstandingOrdersOfCustomerUpTo(customer, endDate)
       layoutTemplate(
-        "/customer",
+        "/customer/customer",
         "customer" -> customer,
         "orders" -> orders,
         "sales" -> sales,

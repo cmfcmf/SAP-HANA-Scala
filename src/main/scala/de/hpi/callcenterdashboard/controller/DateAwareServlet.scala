@@ -1,8 +1,8 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.controller
 
-import de.hpi.utility.{DateFormatter, FormattedDate}
-import org.scalatra.{ScalatraServlet, SessionSupport}
+import de.hpi.callcenterdashboard.utility.{DateFormatter, FormattedDate}
 import org.scalatra.scalate.ScalateSupport
+import org.scalatra.{ScalatraServlet, SessionSupport}
 
 trait DateAwareServlet extends ScalatraServlet with ScalateSupport with SessionSupport {
   before() {

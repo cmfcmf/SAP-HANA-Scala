@@ -1,6 +1,7 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility._
+import de.hpi.callcenterdashboard.entity._
+import de.hpi.callcenterdashboard.utility._
 import java.sql.{Connection, DriverManager}
 
 /**

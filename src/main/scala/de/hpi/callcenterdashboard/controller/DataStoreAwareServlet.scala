@@ -1,7 +1,8 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.controller
 
 import javax.servlet.ServletConfig
 
+import de.hpi.callcenterdashboard.{Credentials, DataStore}
 import org.scalatra.ScalatraServlet
 import org.scalatra.scalate.ScalateSupport
 

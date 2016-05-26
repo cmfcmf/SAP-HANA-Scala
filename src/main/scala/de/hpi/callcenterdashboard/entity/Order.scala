@@ -1,7 +1,8 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.entity
 
 import java.sql.ResultSet
-import de.hpi.utility._
+
+import de.hpi.callcenterdashboard.utility._
 
 class Order(result: ResultSet) {
   val accountingArea = result.getString("BUCHUNGSKREIS")

@@ -1,4 +1,4 @@
-package de.hpi.utility
+package de.hpi.callcenterdashboard.utility
 
 import java.text.SimpleDateFormat
 import java.util.Date
