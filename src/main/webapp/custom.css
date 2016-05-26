@@ -14,3 +14,10 @@ nav :-moz-placeholder { /* Firefox 18- */
 nav .form-control {
     color: white !important;
 }
+
+table.sortable th.text-right:after {
+    left: 5px !important;
+}
+table.sortable th.text-right span.sign {
+    left: 5px !important;
+}

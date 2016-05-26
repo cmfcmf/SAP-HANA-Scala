@@ -27,15 +27,15 @@
 {{/customer}}
 <div class="row">
     <div class="col-md-8">
-        <h3>Outstanding orders until {{outstanding_orders_date_well_formed}}</h3>
+        <h3>Outstanding orders until {{outstanding_orders_date}}</h3>
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="sortable table table-striped">
                 <thead>
                 <tr>
                     <th>Date</th>
                     <th>Reference number</th>
                     <th>Workpiece</th>
-                    <th>Material</th>
+                    <th>Factory</th>
                     <th>Amount (House)</th>
                     <th>Amount (Transaction)</th>
                 </tr>
@@ -45,10 +45,18 @@
                     <tr class="danger">
                         <td>{{bookingDate}}</td>
                         <td>{{referenceNumber}}</td>
-                        <td>{{workPiece}}</td>
-                        <td>{{material}}</td>
-                        <td class="text-right">{{houseMoney}}</td>
-                        <td class="text-right">{{transactionMoney}}</td>
+                        <td>
+                          {{#workPiece}}
+                            <abbr title="{{id}}">{{name}}</abbr>
+                          {{/workPiece}}
+                        </td>
+                        <td>
+                          {{#factory}}
+                            <abbr title="{{address}}">{{name}}</abbr>
+                          {{/factory}}
+                        </td>
+                        <td class="text-right" data-value="{{#houseMoney}}{{amountAsString}}{{/houseMoney}}">{{houseMoney}}</td>
+                        <td class="text-right" data-value="{{#transactionMoney}}{{amountAsString}}{{/transactionMoney}}">{{transactionMoney}}</td>
                     </tr>
                 {{/outstanding_orders}}
                 {{^outstanding_orders}}
@@ -63,13 +71,13 @@
         </div>
         <h3>Orders</h3>
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="sortable table table-striped">
                 <thead>
                 <tr>
                     <th>Date</th>
                     <th>Reference number</th>
                     <th>Workpiece</th>
-                    <th>Material</th>
+                    <th>Factory</th>
                     <th>Amount (House)</th>
                     <th>Amount (Transaction)</th>
                 </tr>
@@ -79,10 +87,18 @@
                     <tr>
                         <td>{{bookingDate}}</td>
                         <td>{{referenceNumber}}</td>
-                        <td>{{workPiece}}</td>
-                        <td>{{material}}</td>
-                        <td class="text-right">{{houseMoney}}</td>
-                        <td class="text-right">{{transactionMoney}}</td>
+                        <td>
+                          {{#workPiece}}
+                            <abbr title="{{id}}">{{name}}</abbr>
+                          {{/workPiece}}
+                        </td>
+                        <td>
+                          {{#factory}}
+                            <abbr title="{{address}}">{{name}}</abbr>
+                          {{/factory}}
+                        </td>
+                        <td class="text-right" data-value="{{#houseMoney}}{{amountAsString}}{{/houseMoney}}">{{houseMoney}}</td>
+                        <td class="text-right" data-value="{{#transactionMoney}}{{amountAsString}}{{/transactionMoney}}">{{transactionMoney}}</td>
                     </tr>
                 {{/orders}}
                 {{^orders}}
@@ -102,7 +118,7 @@
             <div id="sales_chart" class="embed-responsive-item"></div>
         </div>
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="sortable table table-striped">
                 <thead>
                 <tr>
                     <th>Year</th>
@@ -114,8 +130,8 @@
                 {{#sales}}
                     <tr>
                         <td>{{_1}}</td>
-                        <td class="text-right">{{_2}}</td>
-                        <td class="text-right">{{_3}}</td>
+                        <td class="text-right" data-value="{{#_2}}{{amountAsString}}{{/_2}}">{{_2}}</td>
+                        <td class="text-right" data-value="{{#_3}}{{amountAsString}}{{/_3}}">{{_3}}</td>
                     </tr>
                 {{/sales}}
                 </tbody>
@@ -123,33 +139,29 @@
         </div>
     </div>
 </div>
-<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <script type="text/javascript">
-    $('#dp1').datepicker({
-        format: 'yyyymmdd'
-    }).on('changeDate', function(ev) {
-        window.location = window.location.href +'/../'+ev.date
-    });
-    google.charts.load('current', {'packages':['corechart']});
     google.charts.setOnLoadCallback(drawChart);
 
     function drawChart() {
         var sales = [
-            {{#sales}}
-                ["{{_1}}", {{#_2}}{{amountAsString}}{{/_2}}, {{#_3}}{{amountAsString}}{{/_3}}],
-            {{/sales}}
-            ['Year', 'Sales', 'Profit']
+          {{#sales}}
+              ["{{_1}}", {{#_2}}{{amountAsString}}{{/_2}}, {{#_3}}{{amountAsString}}{{/_3}}],
+          {{/sales}}
+          ['Year', 'Sales', 'Profit']
         ];
         var data = google.visualization.arrayToDataTable(sales.reverse());
 
         var options = {
-            title: 'Sales',
-            curveType: 'none',
-            legend: { position: 'bottom' }
+          title: 'Sales',
+          curveType: 'none',
+          legend: { position: 'bottom' },
+          animation: {
+            startup: true,
+            duration: 1000,
+            easing: 'out'
+          }
         };
-
         var chart = new google.visualization.LineChart(document.getElementById('sales_chart'));
-
         chart.draw(data, options);
     }
 </script>

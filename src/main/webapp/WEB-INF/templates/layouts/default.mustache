@@ -22,15 +22,34 @@
   <link href="/pace.css" rel="stylesheet"/>
 
   <link href="/bootstrap.min.css" rel="stylesheet">
-  <link href="/datepicker.css" rel="stylesheet">
   <link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
+  <link href="/datepicker/css/bootstrap-datepicker3.min.css" rel="stylesheet">
+  <link href="/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
   <link rel="stylesheet" href="/custom.css">
   <!--[if lt IE 9]>
   <script src="/html5shiv.min.js"></script>
   <script src="/respond.min.js"></script>
   <![endif]-->
   <script src="/jquery-1.12.3.min.js"></script>
-  <script src="/bootstrap-datepicker.js"></script>
+  <script src="/jquery.pjax.js"></script>
+  {{! Needed for charts}}
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  {{! Needed for geo chart}}
+  <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+  <script>
+    // Enable PJAX.
+    $(document).pjax('a', 'body', {
+      fragment: 'body',
+      timeout: 1000
+    });
+    // Use PJAX to submit forms.
+    $('body').on('submit', 'form[data-pjax]', function(event) {
+      $.pjax.submit(event, 'body')
+    });
+
+    // Load charts for both the cash cow and the world wide sales.
+    google.charts.load('current', {packages: ['corechart', 'geochart']});
+  </script>
 </head>
 <body>
 <nav class="navbar navbar-inverse">
@@ -47,25 +66,37 @@
 
     <div class="collapse navbar-collapse" id="navbar-collapse">
       <ul class="nav navbar-nav">
-        <li class="{{#isCurrentPage}}/{{/isCurrentPage}}"><a href="/">Find customers <span
-            class="sr-only">(current)</span></a></li>
-        <li class="{{#isCurrentPage}}/company/statistics{{/isCurrentPage}}"><a title="Statistics about our company" href="/company/statistics">Company statistics</a></li>
-        <li class="{{#isCurrentPage}}/about{{/isCurrentPage}}"><a href="/about">About</a></li>
+        <li class="{{#isCurrentPage}}/{{/isCurrentPage}}">
+          <a title="Search for customers" href="/">
+            <i class="fa fa-search"></i> Find customers
+          </a>
+        </li>
+        <li class="{{#isCurrentPage}}/company/statistics{{/isCurrentPage}}">
+          <a title="Statistics about our company" href="/company/statistics">
+            <i class="fa fa-database"></i> Company statistics
+          </a>
+        </li>
+        <li class="{{#isCurrentPage}}/about{{/isCurrentPage}}">
+          <a title="About us" href="/about">
+            <i class="fa fa-info"></i> About
+          </a>
+        </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        <li><a href="https://github.com/cmfcmf/sap-hana"><i class="fa fa-external-link fa-fw"></i> GitHub</a></li>
+        <li>
+          <a href="https://github.com/cmfcmf/sap-hana">
+            <i class="fa fa-external-link"></i> GitHub</a>
+        </li>
       </ul>
-      {{#isGetRequest}}
-        <form class="navbar-form navbar-right" method="get">
-          <div class="form-group">
-            <input type="date" class="form-control" placeholder="start date" value="{{startDate}}" name="startDate">
-          </div>
-          <div class="form-group">
-            <input type="date" class="form-control" placeholder="end date" value="{{endDate}}" name="endDate">
-          </div>
-          <button type="submit" class="btn btn-default">Save</button>
-        </form>
-      {{/isGetRequest}}
+      <form class="navbar-form navbar-right" method="get" data-pjax="1">
+        <div class="form-group">
+          <input type="date" class="form-control" placeholder="start date" value="{{#startDate}}{{forDatePicker}}{{/startDate}}" name="startDate" id="startDate">
+        </div>
+        <div class="form-group">
+          <input type="date" class="form-control" placeholder="end date" value="{{#endDate}}{{forDatePicker}}{{/endDate}}" name="endDate" id="endDate">
+        </div>
+        <button type="submit" class="btn btn-default" data-loading-text="Saving...">Save</button>
+      </form>
     </div>
   </div>
 </nav>
@@ -87,5 +118,24 @@
 </div>
 
 <script src="/bootstrap.min.js"></script>
+<script src="/moment.min.js"></script>
+<script src="/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="/bootstrap-sortable/Scripts/moment.min.js"></script>
+<script src="/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+<script>
+  // Initialize datepickers.
+  $('#startDate').datepicker({format: 'yyyy-mm-dd'});
+  $('#endDate').datepicker({format: 'yyyy-mm-dd'});
+
+  // Reverse sorting arrows in tables.
+  $(function () {
+    $.bootstrapSortable({ sign: "arrow reversed" });
+  });
+
+  // Enable loading state on certain buttons.
+  $('body').on('click', 'button[data-loading-text]', function () {
+    $(this).button('loading')
+  });
+</script>
 </body>
 </html>

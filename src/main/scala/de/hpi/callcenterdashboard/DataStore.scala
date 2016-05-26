@@ -1,6 +1,7 @@
 package de.hpi.callcenterdashboard
 
-import de.hpi.utility._
+import de.hpi.callcenterdashboard.entity._
+import de.hpi.callcenterdashboard.utility._
 import java.sql.{Connection, DriverManager}
 
 /**
@@ -16,6 +17,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val numOrders = 10
   private val numCustomers = 100
   private val years = List("2014", "2013")
+  private val houseCurrency = "EUR"
 
   /**
     * Opens the database connection.
@@ -191,7 +193,10 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
-              SELECT * FROM $tablePrefix.ACDOCA_HPI
+              SELECT *
+              FROM $tablePrefix.ACDOCA_HPI a
+              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
+              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
               WHERE
                 KUNDE = ?
                 AND
@@ -264,8 +269,8 @@ class DataStore(credentials: CredentialsTrait) {
     }
 
     for (year <- years) yield {
-      val sales = resultMap.getOrElse((year, salesAccount), Money(BigDecimal("0.00"), "EUR"))
-      val costs = resultMap.getOrElse((year, costsAccount), Money(BigDecimal("0.00"), "EUR"))
+      val sales = resultMap.getOrElse((year, salesAccount), Money(BigDecimal("0.00"), houseCurrency))
+      val costs = resultMap.getOrElse((year, costsAccount), Money(BigDecimal("0.00"), houseCurrency))
       (year, sales, sales + costs)
     }
   }
@@ -316,19 +321,21 @@ class DataStore(credentials: CredentialsTrait) {
     var products = List.empty[Product]
     connection.foreach(connection => {
       val sql =
-        "SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG " +
-        s"FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI " +
-        "WHERE BUCHUNGSDATUM >= ? " + //startDate
-        "AND BUCHUNGSDATUM <= ? " + //endDate
-        s"AND KONTO = $salesAccount " +
-        s"AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER " +
-        "GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG " +
-        "ORDER BY SUM(HAUS_BETRAG) DESC " +
-        "LIMIT ?"
+        s"""
+            SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG
+            FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI
+            WHERE
+              BUCHUNGSDATUM BETWEEN ? AND ?
+              AND KONTO = $salesAccount
+              AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
+            GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG
+            ORDER BY SUM(HAUS_BETRAG) DESC
+            LIMIT ?
+          """
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setDate(1, startDate.asSQLDate)
-        preparedStatement.setDate(2, endDate.asSQLDate)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
         preparedStatement.setInt(3, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -348,7 +355,9 @@ class DataStore(credentials: CredentialsTrait) {
             SELECT *, amount
             FROM (
               SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
-              FROM $tablePrefix.ACDOCA_HPI
+              FROM $tablePrefix.ACDOCA_HPI a
+              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
+              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
               WHERE KUNDE = ?
               AND BUCHUNGSDATUM <= ?
               AND KONTO = $costsAccount
@@ -364,9 +373,9 @@ class DataStore(credentials: CredentialsTrait) {
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setDate(2, date.asSQLDate)
+        preparedStatement.setString(2, date.unformatted)
         preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setDate(4, date.asSQLDate)
+        preparedStatement.setString(4, date.unformatted)
 
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -412,7 +421,7 @@ class DataStore(credentials: CredentialsTrait) {
   }
 
   def getSalesOfCountryOrRegion(country: String, region: String, startDate: String, endDate: String) : Money = {
-    var salesOfCountryOrRegion = new Money(0, "EUR")
+    var salesOfCountryOrRegion = new Money(0, houseCurrency)
     connection.foreach(connection => {
       val sql =
         s"""
@@ -423,8 +432,7 @@ class DataStore(credentials: CredentialsTrait) {
               AND
               ( ? = ''  OR CONTAINS(LAND, ?, FUZZY(0.8)))
             AND KONTO = $salesAccount
-            AND BUCHUNGSDATUM >= ?
-            AND BUCHUNGSDATUM <= ?
+            AND BUCHUNGSDATUM BETWEEN ? AND ?
             GROUP BY LAND, HAUS_WAEHRUNG
         """
       try {
@@ -448,5 +456,45 @@ class DataStore(credentials: CredentialsTrait) {
     })
     println(salesOfCountryOrRegion)
     salesOfCountryOrRegion
+  }
+
+  /**
+    * Given a start and end date, return a list of tuples of (Country, SalesSum) for each country
+    * where we sold something. The SalesSum is the sum of all sales for that country.
+    *
+    * @param startDate The start date.
+    * @param endDate   The end date.
+    * @return
+    */
+  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money)] = {
+    var sales = List.empty[(String, Money)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, LAND
+            FROM $tablePrefix.ACDOCA_HPI AS a JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
+            WHERE
+              KONTO = $salesAccount
+              AND BUCHUNGSDATUM BETWEEN ? AND ?
+            GROUP BY LAND, HAUS_WAEHRUNG
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          sales = sales :+ (
+            resultSet.getString("LAND"),
+            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+
+    sales
   }
 }

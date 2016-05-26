@@ -1,7 +1,7 @@
 <h1>Find customers</h1>
 <p>Please insert customer id or name and zip code.</p>
 
-<form class="form" method="post" action="/find-customer">
+<form class="form" method="get" action="/find-customer" data-pjax="1">
     <div class="form-group">
         <input class="form-control" id="customerId" name="customerId" aria-label="Customer Id" placeholder="Customer Id" type="text" autofocus>
     </div>
@@ -20,12 +20,7 @@
             </div>
         </div>
     </div>
-    <button type="submit" class="btn btn-block btn-primary" id="searchButton" data-loading-text="Searching..." >
+    <button type="submit" class="btn btn-block btn-primary" id="searchButton" data-loading-text="Searching...">
         Search
     </button>
 </form>
-<script>
-    $('#searchButton').on('click', function () {
-        $(this).button('loading')
-    })
-</script>

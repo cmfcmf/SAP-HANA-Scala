@@ -1,7 +1,8 @@
-package de.hpi.callcenterdashboard
+package de.hpi.callcenterdashboard.controller
 
 import javax.servlet.ServletConfig
 
+import de.hpi.callcenterdashboard.{Credentials, DataStore}
 import org.scalatra.ScalatraServlet
 import org.scalatra.scalate.ScalateSupport
 
@@ -24,6 +25,6 @@ trait DataStoreAwareServlet extends ScalatraServlet with ScalateSupport {
     if (!dataStore.isOpened) {
       templateAttributes("error") = "No connection to database!"
     }
-    templateAttributes("isCurrentPage") = (path: String) => if (path == requestPath) "active" else ""
+    templateAttributes("isCurrentPage") = (path: String) => if (path == request.getServletPath + requestPath) "active" else ""
   }
 }
