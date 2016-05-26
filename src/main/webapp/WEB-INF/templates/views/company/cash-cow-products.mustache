@@ -1,6 +1,23 @@
 <div class="row">
   <div class="col-xs-12">
-    <h3>Cash cow products between {{startDate}} and {{endDate}}</h3>
+    <h3>Cash cow products
+      {{#startDate}}
+        {{#endDate}}
+          between {{startDate}} and {{endDate}}
+        {{/endDate}}
+        {{^endDate}}
+          after {{startDate}}
+        {{/endDate}}
+      {{/startDate}}
+      {{^startDate}}
+        {{#endDate}}
+          until {{endDate}}
+        {{/endDate}}
+        {{^endDate}}
+          {{! Nothing}}
+        {{/endDate}}
+      {{/startDate}}
+    </h3>
   </div>
   <div class="col-md-8">
     <div class="table-responsive">
