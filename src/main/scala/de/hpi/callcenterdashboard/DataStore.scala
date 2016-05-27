@@ -454,7 +454,6 @@ class DataStore(credentials: CredentialsTrait) {
         case e: Throwable => printError(e)
       }
     })
-    println(salesOfCountryOrRegion)
     salesOfCountryOrRegion
   }
 
@@ -466,17 +465,57 @@ class DataStore(credentials: CredentialsTrait) {
     * @param endDate   The end date.
     * @return
     */
-  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money)] = {
-    var sales = List.empty[(String, Money)]
+  def getSalesForRegionsOfCountry(countryCode : String, startDate: FormattedDate, endDate: FormattedDate):
+    List[(String, String, Money)] = {
+    var sales = List.empty[(String, String, Money)]
     connection.foreach(connection => {
       val sql =
         s"""
-            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, LAND
-            FROM $tablePrefix.ACDOCA_HPI AS a JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
+            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, REGION
+            FROM $tablePrefix.ACDOCA_HPI AS a
+              JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
             WHERE
               KONTO = $salesAccount
               AND BUCHUNGSDATUM BETWEEN ? AND ?
-            GROUP BY LAND, HAUS_WAEHRUNG
+              AND LAND = ?
+              AND REGION NOT LIKE ''
+            GROUP BY REGION, HAUS_WAEHRUNG
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
+        preparedStatement.setString(3, countryCode)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          sales = sales :+ (
+            countryCode,
+            resultSet.getString("REGION"),
+            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    sales
+  }
+
+  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money, String)] = {
+    var sales = List.empty[(String, Money, String)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, k.LAND AS LAENDERKUERZEL, b.NAME AS LANDNAME
+            FROM $tablePrefix.ACDOCA_HPI AS a
+              JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
+              JOIN $tablePrefix.T005T_HPI AS b ON k.LAND = b.LAND
+            WHERE
+              KONTO = $salesAccount
+              AND BUCHUNGSDATUM BETWEEN ? AND ?
+              AND SPRACHE = 'E'
+            GROUP BY k.LAND, b.NAME, HAUS_WAEHRUNG
          """
       try {
         val preparedStatement = connection.prepareStatement(sql)
@@ -486,15 +525,15 @@ class DataStore(credentials: CredentialsTrait) {
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           sales = sales :+ (
-            resultSet.getString("LAND"),
-            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
+            resultSet.getString("LAENDERKUERZEL"),
+            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG")),
+            resultSet.getString("LANDNAME")
             )
         }
       } catch {
         case e: Throwable => printError(e)
       }
     })
-
     sales
   }
 }
