@@ -275,7 +275,7 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductSalesPercent(customerId: String, startDate: String, endDate: String): List[(Product, Float)] = {
+  def getProductSalesPercent(customerId: String, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float)] = {
     var products = List.empty[(Product, Float)]
     connection.foreach(connection => {
       val totalAmountQuery = s"""
@@ -300,11 +300,11 @@ class DataStore(credentials: CredentialsTrait) {
 
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate)
-        preparedStatement.setString(2, endDate)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
         preparedStatement.setString(3, customerId)
-        preparedStatement.setString(4, startDate)
-        preparedStatement.setString(5, endDate)
+        preparedStatement.setString(4, startDate.unformatted)
+        preparedStatement.setString(5, endDate.unformatted)
         preparedStatement.setString(6, customerId)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
@@ -420,7 +420,7 @@ class DataStore(credentials: CredentialsTrait) {
     averagePaymentTime
   }
 
-  def getSalesOfCountryOrRegion(country: String, region: String, startDate: String, endDate: String) : Money = {
+  def getSalesOfCountryOrRegion(country: String, region: String, startDate: FormattedDate, endDate: FormattedDate) : Money = {
     var salesOfCountryOrRegion = new Money(0, houseCurrency)
     connection.foreach(connection => {
       val sql =
@@ -441,8 +441,8 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(2, region)
         preparedStatement.setString(3, country)
         preparedStatement.setString(4, country)
-        preparedStatement.setString(5, startDate)
-        preparedStatement.setString(6, endDate)
+        preparedStatement.setString(5, startDate.unformatted)
+        preparedStatement.setString(6, endDate.unformatted)
 
         val resultSet = preparedStatement.executeQuery()
         if (resultSet.next()) {

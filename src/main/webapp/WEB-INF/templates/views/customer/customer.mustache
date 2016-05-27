@@ -137,6 +137,30 @@
                 </tbody>
             </table>
         </div>
+        <h3>Sales Contributions</h3>
+        <div id="piechart" class="embed-responsive-item"></div>
+        <div class="table-responsive">
+          <table class="sortable table table-striped">
+          <thead>
+          <tr>
+              <th>Product-ID</th>
+              <th>Product</th>
+              <th>Percentage</th>
+          </tr>
+          </thead>
+          <tbody>
+          {{#sales_contributions}}
+              <tr>
+                {{#_1}}
+                  <td>{{id}}</td>
+                  <td>{{name}}</td>
+                {{/_1}}
+                  <td>{{_2}} %</td>
+              </tr>
+          {{/sales_contributions}}
+          </tbody>
+          </table>
+        </div>
     </div>
 </div>
 <script type="text/javascript">
@@ -163,5 +187,28 @@
         };
         var chart = new google.visualization.LineChart(document.getElementById('sales_chart'));
         chart.draw(data, options);
+
+        var contributions_data = [
+          {{#sales_contributions}}
+            [{{#_1}}"{{name}}"{{/_1}}, parseFloat(({{_2}}).toString().replace(',','.'))],
+          {{/sales_contributions}}
+          ['Product', 'Sales contributions']
+        ];
+        var data_pie = google.visualization.arrayToDataTable(contributions_data.reverse());
+
+        var options_pie = {
+          title: 'Sales Contributions',
+          legend: { position: 'bottom' },
+          animation: {
+            startup: true,
+            duration: 1000,
+            easing: 'out'
+          }
+        };
+
+        var chart_pie = new google.visualization.PieChart(document.getElementById('piechart'));
+
+        chart_pie.draw(data_pie, options_pie);
+
     }
 </script>

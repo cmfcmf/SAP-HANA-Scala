@@ -29,13 +29,20 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
       val orders = dataStore.getOrdersOf(customer)
       val sales = dataStore.getSalesAndProfitOf(customer)
       val outstanding_orders = dataStore.getOutstandingOrdersOfCustomerUpTo(customer, endDate)
+      val salesContributions = dataStore.getProductSalesPercent(
+        customerId,
+        startDate,
+        endDate
+      )
+      salesContributions.foreach {println}
       layoutTemplate(
         "/customer/customer",
         "customer" -> customer,
         "orders" -> orders,
         "sales" -> sales,
         "outstanding_orders" -> outstanding_orders,
-        "outstanding_orders_date" -> endDate
+        "outstanding_orders_date" -> endDate,
+        "sales_contributions" -> salesContributions
       )
     }).getOrElse(resourceNotFound)
   }
