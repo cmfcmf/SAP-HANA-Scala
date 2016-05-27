@@ -34,7 +34,6 @@ class CustomerServlet extends DataStoreAwareServlet with ScalateSupport with Dat
         startDate,
         endDate
       )
-      salesContributions.foreach {println}
       layoutTemplate(
         "/customer/customer",
         "customer" -> customer,
