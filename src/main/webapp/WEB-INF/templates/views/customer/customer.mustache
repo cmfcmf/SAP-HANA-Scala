@@ -192,7 +192,7 @@
 
         var contributions_data = [
           {{#sales_contributions}}
-            [{{#_1}}"{{name}}"{{/_1}}, parseFloat(({{_2}}).toString().replace(',','.'))],
+            [{{#_1}}"{{name}}"{{/_1}}, parseFloat("{{_2}}".replace(',', '.'))],
           {{/sales_contributions}}
           ['Product', 'Sales contributions']
         ];
