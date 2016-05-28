@@ -1,0 +1,57 @@
+<div class="row">
+  <div class="col-md-12">
+    <h3>World wide sales including region infos
+      {{#startDate}}
+        {{#endDate}}
+          between {{startDate}} and {{endDate}}
+        {{/endDate}}
+        {{^endDate}}
+          after {{startDate}}
+        {{/endDate}}
+      {{/startDate}}
+      {{^startDate}}
+        {{#endDate}}
+          until {{endDate}}
+        {{/endDate}}
+        {{^endDate}}
+          {{! Nothing}}
+        {{/endDate}}
+      {{/startDate}}
+    </h3>
+  </div>
+  <div class="col-md-12">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+        <tr>
+          <th>Country</th>
+          <th>Region</th>
+          <th class="text-right">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{#regionalSales}}
+          <tr class="active">
+            <td colspan="2">{{_1}}</td>
+            {{#_3}}<td class="text-right" data-value="{{amountAsString}}"><strong>{{toString}}</strong></td>{{/_3}}
+          </tr>
+          {{#_4}}
+            <tr>
+              <td></td>
+              <td><em>{{_2}}</em></td>
+              <td class="text-right"><em>{{#_3}}{{toString}}{{/_3}}</em></td>
+            </tr>
+          {{/_4}}
+        {{/regionalSales}}
+        {{^regionalSales}}
+          <tr class="danger">
+            <td colspan="3" class="text-center danger">
+              <strong>We did not sell anything in the given time frame. Bad times :(</strong>
+            </td>
+          </tr>
+        {{/regionalSales}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
