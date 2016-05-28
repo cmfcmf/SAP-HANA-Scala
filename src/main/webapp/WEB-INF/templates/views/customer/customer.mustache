@@ -64,6 +64,7 @@
           <th>Product-ID</th>
           <th>Product</th>
           <th>Percentage</th>
+          <th class="text-right">Amount</th>
         </tr>
         </thead>
         <tbody>
@@ -74,11 +75,12 @@
               <td>{{name}}</td>
             {{/_1}}
             <td>{{_2}} %</td>
+            <td class="text-right" data-value="{{#_3}}{{amountAsString}}{{/_3}}">{{_3}}</td>
           </tr>
         {{/sales_contributions}}
         {{^sales_contributions}}
           <tr>
-            <td colspan="3" class="text-center danger">No data available!</td>
+            <td colspan="4" class="text-center danger">No data available!</td>
           </tr>
         {{/sales_contributions}}
         </tbody>
@@ -106,8 +108,8 @@
               <th>Reference number</th>
               <th>Product</th>
               <th>Factory</th>
-              <th>Amount (House)</th>
-              <th>Amount (Transaction)</th>
+              <th class="text-right">Amount (House)</th>
+              <th class="text-right">Amount (Transaction)</th>
             </tr>
             </thead>
             <tbody>
@@ -149,8 +151,8 @@
               <th>Reference number</th>
               <th>Product</th>
               <th>Factory</th>
-              <th>Amount (House)</th>
-              <th>Amount (Transaction)</th>
+              <th class="text-right">Amount (House)</th>
+              <th class="text-right">Amount (Transaction)</th>
             </tr>
             </thead>
             <tbody>

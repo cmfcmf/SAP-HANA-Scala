@@ -345,27 +345,34 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductSalesPercent(customer: Customer, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float)] = {
-    var products = List.empty[(Product, Float)]
+  def getProductSalesPercent(customer: Customer, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float, Money)] = {
+    var products = List.empty[(Product, Float, Money)]
     connection.foreach(connection => {
+      // @todo We currently return all products ever sold to that customer.
       val totalAmountQuery = s"""
-        SELECT SUM(HAUS_BETRAG) AS TOTAL_AMOUNT
+        SELECT SUM(HAUS_BETRAG) AS GESAMMT_UMSATZ
         FROM $tablePrefix.ACDOCA_HPI
-        WHERE BUCHUNGSDATUM >= ?
-        AND BUCHUNGSDATUM <= ?
-        AND KUNDE = ?
-        AND KONTO = $salesAccount
+        WHERE BUCHUNGSDATUM BETWEEN ? AND ?
+          AND KUNDE = ?
+          AND KONTO = $salesAccount
         """
       val sql = s"""
-        SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, (SUM(HAUS_BETRAG) / TOTAL_AMOUNT) AS PERCENTAGE, HAUS_WAEHRUNG
-        FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI, ($totalAmountQuery)
-        WHERE BUCHUNGSDATUM >= ?
-        AND BUCHUNGSDATUM <= ?
-        AND KUNDE = ?
-        AND KONTO = $salesAccount
-        AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
-        GROUP BY KUNDE, MATERIAL, TEXT, HAUS_WAEHRUNG, TOTAL_AMOUNT
-        ORDER BY SUM(HAUS_BETRAG) DESC
+        SELECT
+          SUM(bestellung.HAUS_BETRAG) AS UMSATZ, bestellung.HAUS_WAEHRUNG,
+          (SUM(bestellung.HAUS_BETRAG) / GESAMMT_UMSATZ) * 100 AS UMSATZANTEIL,
+          GESAMMT_UMSATZ,
+          bestellung.MATERIAL AS MATERIAL,
+          material.TEXT AS MATERIAL_TEXT
+        FROM
+          $tablePrefix.ACDOCA_HPI bestellung,
+          ($totalAmountQuery),
+          $tablePrefix.MAKT_HPI material
+        WHERE bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+          AND bestellung.KUNDE = ?
+          AND bestellung.KONTO = $salesAccount
+          AND material.MATERIALNUMMER = bestellung.MATERIAL
+        GROUP BY bestellung.KUNDE, bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG, GESAMMT_UMSATZ
+        ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
         """
 
       try {
@@ -378,38 +385,11 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(6, customer.customerId)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          products = products :+ (new Product(resultSet), resultSet.getFloat("PERCENTAGE") * 100)
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    products
-  }
-
-  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[Product] = {
-    var products = List.empty[Product]
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG
-            FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI
-            WHERE
-              BUCHUNGSDATUM BETWEEN ? AND ?
-              AND KONTO = $salesAccount
-              AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
-            GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG
-            ORDER BY SUM(HAUS_BETRAG) DESC
-            LIMIT ?
-          """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setInt(3, numProducts)
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          products = products :+ new Product(resultSet)
+          products = products :+ (
+            new Product(resultSet),
+            resultSet.getFloat("UMSATZANTEIL"),
+            Money(resultSet.getBigDecimal("UMSATZ"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
         }
       } catch {
         case e: Throwable => printError(e)
@@ -450,6 +430,37 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
     averagePaymentTime
+  }
+
+  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[Product] = {
+    var products = List.empty[Product]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG
+            FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI
+            WHERE
+              BUCHUNGSDATUM BETWEEN ? AND ?
+              AND KONTO = $salesAccount
+              AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
+            GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG
+            ORDER BY SUM(HAUS_BETRAG) DESC
+            LIMIT ?
+          """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, startDate.unformatted)
+        preparedStatement.setString(2, endDate.unformatted)
+        preparedStatement.setInt(3, numProducts)
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          products = products :+ new Product(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    products
   }
 
   def getSalesOfCountryOrRegion(country: String, region: String, startDate: FormattedDate, endDate: FormattedDate) : Money = {

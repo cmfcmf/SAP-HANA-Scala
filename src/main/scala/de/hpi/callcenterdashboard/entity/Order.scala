@@ -4,8 +4,6 @@ import java.sql.ResultSet
 
 import de.hpi.callcenterdashboard.utility._
 
-import de.hpi.callcenterdashboard.utility._
-
 class Order(result: ResultSet) {
   val accountingArea = result.getString("BUCHUNGSKREIS")
   val accountingYear = result.getString("GESCHAFTSJAHR")
@@ -21,6 +19,6 @@ class Order(result: ResultSet) {
   )
   val customer = result.getString("KUNDE")
   val factory = new Factory(result)
-  val workPiece = new Workpiece(result)
+  val product = new Product(result)
   val bookingDate = new FormattedDate(result.getString("BUCHUNGSDATUM"))
 }
