@@ -16,7 +16,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val costsAccount = "0000792000"
   private val numOrders = 10
   private val numCustomers = 100
-  private val years = List("2014", "2013")
+  private val years = List("2015", "2014", "2013")
   private val houseCurrency = "EUR"
   private val mandant = 800
   private val language = "'E'"
@@ -444,11 +444,10 @@ class DataStore(credentials: CredentialsTrait) {
     * Creates a list of products which were sold best in the given timefframe.
     *
     * @param numProducts The number of products to return.
-    * @param startDate The start date.
-    * @param endDate The end date.
+    * @param filter The filter to apply.
     * @return A list of touples containing the product and the sales sum.
     */
-  def getCashCowProducts(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Money)] = {
+  def getCashCowProducts(numProducts: Int = 0, filter: Filter): List[(Product, Money)] = {
     var products = List.empty[(Product, Money)]
     connection.foreach(connection => {
       val sql =
@@ -457,19 +456,41 @@ class DataStore(credentials: CredentialsTrait) {
               SUM(HAUS_BETRAG) AS SUMME, bestellung.HAUS_WAEHRUNG,
               bestellung.MATERIAL AS MATERIAL, material.TEXT AS MATERIAL_TEXT
             FROM $tablePrefix.ACDOCA_HPI bestellung
+            JOIN $tablePrefix.KNA1_HPI kunde ON (kunde.KUNDE = bestellung.KUNDE)
             JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+            JOIN $tablePrefix.MARA_HPI material_info_int ON (material_info_int.MATERIALNUMMER = bestellung.MATERIAL)
             WHERE
               bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
               AND bestellung.KONTO = $salesAccount
+              AND (? = '' OR kunde.LAND = ?)
+              AND (? = '' OR kunde.REGION = ?)
+              AND (? = '' OR bestellung.WERK = ?)
+              AND (? = '' OR material_info_int.MATERIALART = ?)
+              AND (? = '' OR EXISTS(
+                SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
+                WHERE
+                  material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
+                  AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
+              ))
             GROUP BY bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG
             ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
             LIMIT ?
           """
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setInt(3, numProducts)
+        preparedStatement.setString(1, filter.startDate.unformatted)
+        preparedStatement.setString(2, filter.endDate.unformatted)
+        preparedStatement.setString(3, filter.countryId)
+        preparedStatement.setString(4, filter.countryId)
+        preparedStatement.setString(5, filter.regionId)
+        preparedStatement.setString(6, filter.regionId)
+        preparedStatement.setString(7, filter.factoryId)
+        preparedStatement.setString(8, filter.factoryId)
+        preparedStatement.setString(9, filter.materialType)
+        preparedStatement.setString(10, filter.materialType)
+        preparedStatement.setString(11, filter.productHierachyVal)
+        preparedStatement.setString(12, filter.productHierachyVal)
+        preparedStatement.setInt(13, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           products = products :+ (
@@ -484,125 +505,89 @@ class DataStore(credentials: CredentialsTrait) {
     products
   }
 
-  /*
-  def getSalesOfCountryOrRegion(country: String, region: String, startDate: FormattedDate, endDate: FormattedDate) : Money = {
-    var salesOfCountryOrRegion = new Money(0, houseCurrency)
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT SUM(HAUS_BETRAG) AS sales, HAUS_WAEHRUNG
-            FROM $tablePrefix.ACDOCA_HPI AS A JOIN $tablePrefix.KNA1_HPI AS B ON A.KUNDE = B.KUNDE
-            WHERE
-              ( ? = '' OR CONTAINS(REGION, ?, FUZZY(0.8)))
-              AND
-              ( ? = ''  OR CONTAINS(LAND, ?, FUZZY(0.8)))
-            AND KONTO = $salesAccount
-            AND BUCHUNGSDATUM BETWEEN ? AND ?
-            GROUP BY LAND, HAUS_WAEHRUNG
-        """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, region)
-        preparedStatement.setString(2, region)
-        preparedStatement.setString(3, country)
-        preparedStatement.setString(4, country)
-        preparedStatement.setString(5, startDate.unformatted)
-        preparedStatement.setString(6, endDate.unformatted)
-
-        val resultSet = preparedStatement.executeQuery()
-        if (resultSet.next()) {
-          salesOfCountryOrRegion = Money(
-            resultSet.getBigDecimal("sales"),
-            resultSet.getString("HAUS_WAEHRUNG"))
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    salesOfCountryOrRegion
-  }
-  */
-
-  /**
-    * Given a start and end date, return a list of tuples of (Country, SalesSum) for each country
-    * where we sold something. The SalesSum is the sum of all sales for that country.
-    *
-    * @param startDate The start date.
-    * @param endDate   The end date.
-    * @return
-    */
-  def getSalesForRegionsOfCountry(countryCode : String, startDate: FormattedDate, endDate: FormattedDate): List[(String, String, Money)] = {
-    var sales = List.empty[(String, String, Money)]
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, t.BEZEI AS region_name
-            FROM $tablePrefix.ACDOCA_HPI AS a
-              JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
-              JOIN $tablePrefix.T005U as t ON (t.MANDT = $mandant AND REGION = t.BLAND AND LAND = t.LAND1 AND t.SPRAS = 'E')
-            WHERE
-              KONTO = $salesAccount
-              AND BUCHUNGSDATUM BETWEEN ? AND ?
-              AND LAND = ?
-              AND REGION <> ''
-            GROUP BY t.BEZEI, HAUS_WAEHRUNG
-         """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setString(3, countryCode)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          sales = sales :+ (
-            countryCode,
-            resultSet.getString("region_name"),
-            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
-            )
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    sales
-  }
-
   /**
     * Get the world wide sales sum in a given date range.
     *
-    * @param startDate The start date.
-    * @param endDate The end date.
+    * @param filter The filter to apply.
     * @return Triples of short country code, sales sum, country name.
     */
-  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money, String)] = {
-    var sales = List.empty[(String, Money, String)]
+  def getWorldWideSales(filter: Filter): List[(Country, Money, List[(Region, Money)])] = {
+    var sales = List.empty[(Country, Money, List[(Region, Money)])]
     connection.foreach(connection => {
+      val regionSql =
+        s"""
+           SELECT
+             SUM(HAUS_BETRAG) AS REGION_SUMME,
+             region.BEZEI     AS REGION_NAME,
+             kunde.LAND       AS REGION_LAND,
+             kunde.REGION     AS REGION_ID
+           FROM $tablePrefix.ACDOCA_HPI AS bestellung
+           JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
+           JOIN $tablePrefix.T005U AS region ON (
+             kunde.REGION = region.BLAND
+             AND
+             kunde.LAND = region.LAND1
+             AND region.SPRAS = 'E' AND region.MANDT = $mandant
+           )
+           WHERE
+             KONTO = $salesAccount
+             AND bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+             AND kunde.REGION <> ''
+           GROUP BY region.BEZEI, kunde.LAND, kunde.REGION
+         """
+
       val sql =
         s"""
-            SELECT
-              SUM(bestellung.HAUS_BETRAG) as SUMME, bestellung.HAUS_WAEHRUNG,
-              kunde.LAND AS LAND, land.NAME AS LAND_NAME
-            FROM $tablePrefix.ACDOCA_HPI AS bestellung
-            JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
-            JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
-            WHERE
-              KONTO = $salesAccount
-              AND BUCHUNGSDATUM BETWEEN ? AND ?
-            GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG
+           SELECT
+             SUM(bestellung.HAUS_BETRAG) AS SUMME,
+             bestellung.HAUS_WAEHRUNG,
+             kunde.LAND                  AS LAND,
+             land.NAME                   AS LAND_NAME,
+             REGION_SUMME,
+             REGION_NAME,
+             REGION_ID
+           FROM $tablePrefix.ACDOCA_HPI AS bestellung
+           JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
+           JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
+           LEFT JOIN ($regionSql) regionen ON (regionen.REGION_LAND = land.LAND)
+           WHERE
+             KONTO = $salesAccount
+             AND BUCHUNGSDATUM BETWEEN ? AND ?
+           GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
          """
+
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
+        preparedStatement.setString(1, filter.startDate.unformatted)
+        preparedStatement.setString(2, filter.endDate.unformatted)
+        preparedStatement.setString(3, filter.startDate.unformatted)
+        preparedStatement.setString(4, filter.endDate.unformatted)
 
         val resultSet = preparedStatement.executeQuery()
+        var currentCountryId = ""
+        var regionalSales = List.empty[(Region, Money)]
         while (resultSet.next()) {
-          sales = sales :+ (
-            resultSet.getString("LAND"),
-            Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG")),
-            resultSet.getString("LAND_NAME")
-            )
+          // The following code is one of the ugliest things I've ever writte :-(
+          if (resultSet.getString("LAND") != currentCountryId) {
+            if (sales.nonEmpty) {
+              val old = sales.last
+              sales = sales.dropRight(1)
+              sales = sales :+ (old._1, old._2, regionalSales)
+            }
+            sales = sales :+(
+              Country(currentCountryId, resultSet.getString("LAND_NAME")),
+              Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG")),
+              List.empty[(Region, Money)]
+              )
+            regionalSales = List.empty[(Region, Money)]
+          }
+          if (resultSet.getString("REGION_ID") != null) {
+            regionalSales = regionalSales :+ (
+              Region(resultSet.getString("REGION_ID"), resultSet.getString("REGION_NAME")),
+              Money(resultSet.getBigDecimal("REGION_SUMME"), resultSet.getString("HAUS_WAEHRUNG"))
+              )
+          }
+          currentCountryId = resultSet.getString("LAND")
         }
       } catch {
         case e: Throwable => printError(e)
@@ -637,38 +622,6 @@ class DataStore(credentials: CredentialsTrait) {
     })
     factories
   }
-
-  /*
-  def getCountries: Map[Country, List[Region]] = {
-    var countries = Map.empty[Country, List[Region]]
-    connection.foreach(connection => {
-      val sql =
-        s"""
-           SELECT land.LAND AS LAND, land.NAME as LAND_NAME, region.BLAND AS REGION_ID, region.BEZEI AS REGION_TEXT
-           FROM $tablePrefix.T005T land
-           LEFT JOIN $tablePrefix.T005U as region ON (region.MANDT = $mandant AND land.LAND = region.LAND1 AND region.SPRAS = $language)
-
-           WHERE land.SPRACHE = $language
-           ORDER BY land.NAME ASC, REGION_TEXT ASC
-         """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          val country = new Country(resultSet.getString("LAND"), resultSet.getString("LAND_NAME"))
-          countries = countries.updated(
-            country,
-            countries.getOrElse(country, List.empty) :+ new Region(resultSet.getString("RESULT_ID"), resultSet.getString("REGION_TEXT"))
-          )
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    countries
-  }
-  */
 
   def getCountries: List[Country] = {
     var countries = List.empty[Country]

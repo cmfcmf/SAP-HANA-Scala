@@ -13,7 +13,7 @@
     var data = google.visualization.arrayToDataTable([
       ['Country', 'Sales'],
       {{#worldWideSales}}
-        ['{{_1}}', {{#_2}}{{amountAsString}}{{/_2}}],
+        ['{{#_1}}{{id}}{{/_1}}', {{#_2}}{{amountAsString}}{{/_2}}],
       {{/worldWideSales}}
     ]);
 
