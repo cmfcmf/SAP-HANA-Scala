@@ -5,7 +5,7 @@
         <address>
             <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{street}}<br/>
             <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> {{zip}} {{town}}<br/>
-            <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{#region}}{{.}} - {{/region}}{{country}}
+            <i class="fa fa-globe fa-fw" aria-hidden="true"></i> {{country}}{{#region}} - {{.}}{{/region}}
         </address>
         <dl class="dl-horizontal">
             {{#business}}
@@ -26,7 +26,63 @@
 </div>
 {{/customer}}
 <div class="row">
-    <div class="col-md-8">
+  <div class="col-sm-6">
+    <h3>Sales</h3>
+    <div class="embed-responsive embed-responsive-16by9">
+      <div id="sales_chart" class="embed-responsive-item"></div>
+    </div>
+    <div class="table-responsive">
+      <table class="sortable table table-striped">
+        <thead>
+        <tr>
+          <th>Year</th>
+          <th class="text-right">Sales</th>
+          <th class="text-right">Profit</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{#sales}}
+          <tr>
+            <td>{{_1}}</td>
+            <td class="text-right" data-value="{{#_2}}{{amountAsString}}{{/_2}}">{{_2}}</td>
+            <td class="text-right" data-value="{{#_3}}{{amountAsString}}{{/_3}}">{{_3}}</td>
+          </tr>
+        {{/sales}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <h3>Sales Contributions</h3>
+    <div class="embed-responsive embed-responsive-16by9">
+      <div id="piechart" class="embed-responsive-item"></div>
+    </div>
+    <div class="table-responsive">
+      <table class="sortable table table-striped">
+        <thead>
+        <tr>
+          <th>Product-ID</th>
+          <th>Product</th>
+          <th>Percentage</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{#sales_contributions}}
+          <tr>
+            {{#_1}}
+              <td>{{id}}</td>
+              <td>{{name}}</td>
+            {{/_1}}
+            <td>{{_2}} %</td>
+          </tr>
+        {{/sales_contributions}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-xs-12">
         <h3>Outstanding orders until {{outstanding_orders_date}}</h3>
         <div class="table-responsive">
             <table class="sortable table table-striped">
@@ -34,7 +90,7 @@
                 <tr>
                     <th>Date</th>
                     <th>Reference number</th>
-                    <th>Workpiece</th>
+                    <th>Product</th>
                     <th>Factory</th>
                     <th>Amount (House)</th>
                     <th>Amount (Transaction)</th>
@@ -110,58 +166,6 @@
                 {{/orders}}
                 </tbody>
             </table>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <h3>Sales</h3>
-        <div class="embed-responsive embed-responsive-16by9">
-            <div id="sales_chart" class="embed-responsive-item"></div>
-        </div>
-        <div class="table-responsive">
-            <table class="sortable table table-striped">
-                <thead>
-                <tr>
-                    <th>Year</th>
-                    <th>Sales</th>
-                    <th>Profit</th>
-                </tr>
-                </thead>
-                <tbody>
-                {{#sales}}
-                    <tr>
-                        <td>{{_1}}</td>
-                        <td class="text-right" data-value="{{#_2}}{{amountAsString}}{{/_2}}">{{_2}}</td>
-                        <td class="text-right" data-value="{{#_3}}{{amountAsString}}{{/_3}}">{{_3}}</td>
-                    </tr>
-                {{/sales}}
-                </tbody>
-            </table>
-        </div>
-        <h3>Sales Contributions</h3>
-        <div class="embed-responsive embed-responsive-16by9">
-          <div id="piechart" class="embed-responsive-item"></div>
-        </div>
-        <div class="table-responsive">
-          <table class="sortable table table-striped">
-          <thead>
-          <tr>
-              <th>Product-ID</th>
-              <th>Product</th>
-              <th>Percentage</th>
-          </tr>
-          </thead>
-          <tbody>
-          {{#sales_contributions}}
-              <tr>
-                {{#_1}}
-                  <td>{{id}}</td>
-                  <td>{{name}}</td>
-                {{/_1}}
-                  <td>{{_2}} %</td>
-              </tr>
-          {{/sales_contributions}}
-          </tbody>
-          </table>
         </div>
     </div>
 </div>

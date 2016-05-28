@@ -19,6 +19,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val years = List("2014", "2013")
   private val houseCurrency = "EUR"
   private val mandant = 800
+  private val language = "'E'"
 
   /**
     * Opens the database connection.
@@ -56,7 +57,7 @@ class DataStore(credentials: CredentialsTrait) {
     * @param e The exception being thrown
     */
   private def printError(e: Throwable): Unit = {
-    println("#####\n#####\nERROR during database connection:\n" + e.getLocalizedMessage + "\n#####\n#####")
+    println("#####\n#####\nERROR during database connection:\n" + e.getMessage + "\n#####\n#####")
   }
 
   /**
@@ -78,6 +79,13 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
+  private val selectFromKNA1SQL = s"""
+          SELECT kunde.*, land.NAME as LAND_TEXT, region.BEZEI AS REGION_TEXT
+          FROM $tablePrefix.KNA1_HPI kunde
+          JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
+          LEFT JOIN $tablePrefix.T005U as region ON (region.MANDT = $mandant AND kunde.REGION = region.BLAND AND kunde.LAND = region.LAND1 AND region.SPRAS = $language)
+    """
+
   /**
     * Get all customers matching the given id.
     *
@@ -88,18 +96,16 @@ class DataStore(credentials: CredentialsTrait) {
   def getCustomersById(customerId: String, fuzzy: Boolean = false): List[Customer] = {
     var customers = List.empty[Customer]
     connection.foreach(connection => {
-      var sql = ""
+      var sql = selectFromKNA1SQL
       if (fuzzy) {
-        sql = s"""
-          SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI
-          WHERE CONTAINS(KUNDE, ?, FUZZY(0.5))
-          ORDER BY score DESC
+        sql += s"""
+          WHERE CONTAINS(kunde.KUNDE, ?, FUZZY(0.5))
+          ORDER BY SCORE() DESC
           LIMIT $numCustomers
           """
       } else {
-        sql = s"""
-          SELECT * FROM $tablePrefix.KNA1_HPI
-          WHERE LOWER(KUNDE) LIKE LOWER('%' || ? || '%')
+        sql += s"""
+          WHERE LOWER(kunde.KUNDE) LIKE LOWER('%' || ? || '%')
           LIMIT $numCustomers
           """
       }
@@ -130,12 +136,12 @@ class DataStore(credentials: CredentialsTrait) {
     var customers = List.empty[Customer]
     connection.foreach(connection => {
       val sql = s"""
-              SELECT SCORE() AS score, * FROM $tablePrefix.KNA1_HPI
+              $selectFromKNA1SQL
               WHERE
-                (? = '' OR CONTAINS(NAME, ?, FUZZY(0.8)))
+                (? = '' OR CONTAINS(kunde.NAME, ?, FUZZY(0.8)))
                 AND
-                (? = ''  OR CONTAINS(PLZ, ?, FUZZY(0.9)))
-              ORDER BY score DESC
+                (? = ''  OR CONTAINS(kunde.PLZ, ?, FUZZY(0.9)))
+              ORDER BY SCORE() DESC
               LIMIT $numCustomers
               """
       try {
@@ -167,7 +173,14 @@ class DataStore(credentials: CredentialsTrait) {
     var customer = None: Option[Customer]
 
     connection.foreach(connection => {
-      val sql = s"SELECT * FROM $tablePrefix.KNA1_HPI WHERE KUNDE = ?"
+      val sql = s"""
+              SELECT kunde.*, land.NAME as LAND_TEXT, region.BEZEI AS REGION_TEXT
+              FROM $tablePrefix.KNA1_HPI kunde
+              JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
+              LEFT JOIN $tablePrefix.T005U as region ON (region.MANDT = $mandant AND kunde.REGION = region.BLAND AND kunde.LAND = region.LAND1 AND region.SPRAS = $language)
+
+              WHERE KUNDE = ?
+        """
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, customerId)
