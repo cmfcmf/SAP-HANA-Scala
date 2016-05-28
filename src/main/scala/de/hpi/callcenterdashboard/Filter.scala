@@ -8,7 +8,7 @@ case class Filter(
                    factoryId: String,
                    salesOrganization: String,
                    materialType: String,
-                   productHierachyVal: String,
+                   productHierarchyVal: String,
                    countryId: String,
                    regionId: String) {
 }

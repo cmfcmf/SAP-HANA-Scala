@@ -21,6 +21,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val mandant = 800
   private val language = "'E'"
   private val calendarId = "'01'"
+  private val bukrs = "'F010'"
 
   /**
     * Opens the database connection.
@@ -466,16 +467,20 @@ class DataStore(credentials: CredentialsTrait) {
               AND (? = '' OR kunde.REGION = ?)
               AND (? = '' OR bestellung.WERK = ?)
               AND (? = '' OR material_info_int.MATERIALART = ?)
-              AND (? = '' OR EXISTS(
+              AND EXISTS(
                 SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
                 WHERE
                   material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
                   AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
-              ))
+                  AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
+              )
             GROUP BY bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG
             ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
             LIMIT ?
           """
+
+      println(sql)
+      println(filter)
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, filter.startDate.unformatted)
@@ -488,9 +493,10 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(8, filter.factoryId)
         preparedStatement.setString(9, filter.materialType)
         preparedStatement.setString(10, filter.materialType)
-        preparedStatement.setString(11, filter.productHierachyVal)
-        preparedStatement.setString(12, filter.productHierachyVal)
-        preparedStatement.setInt(13, numProducts)
+        preparedStatement.setString(11, filter.productHierarchyVal)
+        preparedStatement.setString(12, filter.salesOrganization)
+        preparedStatement.setString(13, filter.salesOrganization)
+        preparedStatement.setInt(14, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           products = products :+ (
@@ -705,10 +711,11 @@ class DataStore(credentials: CredentialsTrait) {
     connection.foreach(connection => {
       val sql =
         s"""
-           SELECT VKORG AS ID, VTEXT AS NAME
-           FROM $tablePrefix.TVKOT
-           WHERE SPRAS = $language AND MANDT = $mandant
-           ORDER BY VTEXT ASC
+           SELECT tvkot.VKORG AS ID, tvkot.VTEXT AS NAME
+           FROM $tablePrefix.TVKOT tvkot
+           JOIN $tablePrefix.TVKO tvko ON (tvko.MANDT = tvkot.MANDT AND tvko.VKORG = tvkot.VKORG AND tvko.BUKRS = $bukrs)
+           WHERE SPRAS = $language AND tvkot.MANDT = $mandant
+           ORDER BY NAME ASC
          """
       try {
         val preparedStatement = connection.prepareStatement(sql)

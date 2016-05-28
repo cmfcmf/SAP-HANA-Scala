@@ -14,12 +14,12 @@ class CompanyServlet extends DataStoreAwareServlet with ScalateSupport with Date
     val filter = Filter(
       startDate,
       endDate,
-      session.getAttribute("factory").asInstanceOf[String],
-      session.getAttribute("salesOrganization").asInstanceOf[String],
-      session.getAttribute("materialType").asInstanceOf[String],
-      session.getAttribute("productHierachyVal").asInstanceOf[String],
-      session.getAttribute("country").asInstanceOf[String],
-      session.getAttribute("region").asInstanceOf[String]
+      Option(session.getAttribute("factory").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("salesOrganization").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("materialType").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("productHierarchyVal").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("country").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("region").asInstanceOf[String]).getOrElse("")
     )
     val cashCowProducts = dataStore.getCashCowProducts(10, filter)
     val worldWideSales = dataStore.getWorldWideSales(filter)

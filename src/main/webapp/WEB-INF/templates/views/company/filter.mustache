@@ -34,11 +34,11 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="sr-only" for="productHierachyVal">Product Hierachy</label>
-          <select class="form-control" id="productHierachyVal" name="productHierachyVal">
+          <label class="sr-only" for="productHierarchyVal">Product Hierachy</label>
+          <select class="form-control" id="productHierarchyVal" name="productHierarchyVal">
             <option value="">Everything</option>
             {{#productHierarchy}}
-              <option value="{{_1}}"{{#isSelected}}productHierachyVal={{_1}}{{/isSelected}}>{{#indent}}{{{_3}}}{{/indent}}{{_2}}</option>
+              <option value="{{_1}}"{{#isSelected}}productHierarchyVal={{_1}}{{/isSelected}}>{{#indent}}{{{_3}}}{{/indent}}{{_2}}</option>
             {{/productHierarchy}}
           </select>
         </div>
