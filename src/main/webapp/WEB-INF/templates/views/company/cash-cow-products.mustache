@@ -32,20 +32,22 @@
         </tr>
         </thead>
         <tbody>
-        {{#products}}
+        {{#cashCowProducts}}
           <tr>
-            <td>{{id}}</td>
-            <td>{{name}}</td>
-            <td class="text-right" data-value="{{#salesSum}}{{amountAsString}}{{/salesSum}}">{{salesSum}}</td>
+            {{#_1}}
+              <td>{{id}}</td>
+              <td>{{name}}</td>
+            {{/_1}}
+            <td class="text-right" data-value="{{#_2}}{{amountAsString}}{{/_2}}">{{_2}}</td>
           </tr>
-        {{/products}}
-        {{^products}}
+        {{/cashCowProducts}}
+        {{^cashCowProducts}}
           <tr class="danger">
             <td colspan="3" class="text-center danger">
               <strong>We did not sell anything. We will be unemployed soon :(</strong>
             </td>
           </tr>
-        {{/products}}
+        {{/cashCowProducts}}
         </tbody>
       </table>
     </div>
@@ -62,9 +64,9 @@
   function drawSalesChart() {
     var rawData = [
       ['Product', 'Sales volume', {role: 'style'}, {role: 'annotation'}],
-      {{#products}}
-        ['{{name}}', {{#salesSum}}{{amountAsString}}{{/salesSum}}, '#F0AB00', '{{id}}'],
-      {{/products}}
+      {{#cashCowProducts}}
+        ['{{#_1}}{{name}}{{/_1}}', {{#_2}}{{amountAsString}}{{/_2}}, '#F0AB00', '{{#_1}}{{id}}{{/_1}}'],
+      {{/cashCowProducts}}
     ];
     if (rawData.length == 1) {
       // No data to draw a diagram of.
