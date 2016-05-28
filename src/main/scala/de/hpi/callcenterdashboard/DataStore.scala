@@ -20,6 +20,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val houseCurrency = "EUR"
   private val mandant = 800
   private val language = "'E'"
+  private val calendarId = "'01'"
 
   /**
     * Opens the database connection.
@@ -239,6 +240,7 @@ class DataStore(credentials: CredentialsTrait) {
 
   /**
     * Returns all orders of the given customer which aren't yet fully paid until the given date.
+    *
     * @param customer The customer to check.
     * @param date The date until which the orders would have to be paid.
     * @return
@@ -343,7 +345,7 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductSalesPercent(customerId: String, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float)] = {
+  def getProductSalesPercent(customer: Customer, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float)] = {
     var products = List.empty[(Product, Float)]
     connection.foreach(connection => {
       val totalAmountQuery = s"""
@@ -370,10 +372,10 @@ class DataStore(credentials: CredentialsTrait) {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, startDate.unformatted)
         preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setString(3, customerId)
+        preparedStatement.setString(3, customer.customerId)
         preparedStatement.setString(4, startDate.unformatted)
         preparedStatement.setString(5, endDate.unformatted)
-        preparedStatement.setString(6, customerId)
+        preparedStatement.setString(6, customer.customerId)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           products = products :+ (new Product(resultSet), resultSet.getFloat("PERCENTAGE") * 100)
@@ -416,22 +418,24 @@ class DataStore(credentials: CredentialsTrait) {
     products
   }
 
+  /**
+    * Calculates the average amount of working days it takes the customer to pay.
+    *
+    * @param customer The customer.
+    * @return
+    */
   def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {
     var averagePaymentTime = 0
     connection.foreach(connection => {
       val sql = s"""
-              SELECT AVG(paymentDiff) AS avgPaymentTime
-              FROM(
-                SELECT
-                  A.KUNDE AS KUNDE,
-                  WORKDAYS_BETWEEN('01', A.BUCHUNGSDATUM, B.BUCHUNGSDATUM, '$tablePrefix') AS paymentDiff
-                FROM $tablePrefix.ACDOCA_HPI AS A
-                JOIN $tablePrefix.ACDOCA_HPI AS B ON (
-                  A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount
-                )
-              )
-              WHERE KUNDE = ?
-              GROUP BY KUNDE
+              SELECT
+                  ROUND(AVG(WORKDAYS_BETWEEN($calendarId, A.BUCHUNGSDATUM, B.BUCHUNGSDATUM, '$tablePrefix')), 0) AS ZAHLUNGSDAUER
+                  FROM $tablePrefix.ACDOCA_HPI AS A
+                  JOIN $tablePrefix.ACDOCA_HPI AS B ON (
+                      A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount
+                  )
+              WHERE A.KUNDE = ?
+              GROUP BY A.KUNDE
         """
       try {
         val preparedStatement = connection.prepareStatement(sql)
@@ -439,7 +443,7 @@ class DataStore(credentials: CredentialsTrait) {
 
         val resultSet = preparedStatement.executeQuery()
         if (resultSet.next()) {
-          averagePaymentTime = Math.round(resultSet.getFloat("avgPaymentTime"))
+          averagePaymentTime = resultSet.getInt("ZAHLUNGSDAUER")
         }
       } catch {
         case e: Throwable => printError(e)
