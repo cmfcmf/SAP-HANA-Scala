@@ -18,6 +18,7 @@ class DataStore(credentials: CredentialsTrait) {
   private val numCustomers = 100
   private val years = List("2014", "2013")
   private val houseCurrency = "EUR"
+  private val mandant = 800
 
   /**
     * Opens the database connection.
@@ -474,7 +475,7 @@ class DataStore(credentials: CredentialsTrait) {
             SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, t.BEZEI AS region_name
             FROM $tablePrefix.ACDOCA_HPI AS a
               JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
-              JOIN $tablePrefix.T005U as t ON (REGION = t.BLAND AND LAND = t.LAND1 AND t.SPRAS = 'E')
+              JOIN $tablePrefix.T005U as t ON (t.MANDT = $mandant AND REGION = t.BLAND AND LAND = t.LAND1 AND t.SPRAS = 'E')
             WHERE
               KONTO = $salesAccount
               AND BUCHUNGSDATUM BETWEEN ? AND ?
