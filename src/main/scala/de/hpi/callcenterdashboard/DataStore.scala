@@ -471,15 +471,16 @@ class DataStore(credentials: CredentialsTrait) {
     connection.foreach(connection => {
       val sql =
         s"""
-            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, REGION
+            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, t.BEZEI AS region_name
             FROM $tablePrefix.ACDOCA_HPI AS a
               JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
+              JOIN $tablePrefix.T005U as t ON (REGION = t.BLAND AND LAND = t.LAND1 AND t.SPRAS = 'E')
             WHERE
               KONTO = $salesAccount
               AND BUCHUNGSDATUM BETWEEN ? AND ?
               AND LAND = ?
-              AND REGION NOT LIKE ''
-            GROUP BY REGION, HAUS_WAEHRUNG
+              AND REGION <> ''
+            GROUP BY t.BEZEI, HAUS_WAEHRUNG
          """
       try {
         val preparedStatement = connection.prepareStatement(sql)
@@ -491,7 +492,7 @@ class DataStore(credentials: CredentialsTrait) {
         while (resultSet.next()) {
           sales = sales :+ (
             countryCode,
-            resultSet.getString("REGION"),
+            resultSet.getString("region_name"),
             Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
             )
         }
