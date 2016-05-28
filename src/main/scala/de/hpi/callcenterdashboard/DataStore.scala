@@ -5,7 +5,7 @@ import de.hpi.callcenterdashboard.utility._
 import java.sql.{Connection, DriverManager}
 
 /**
-  * DataStore for assignment 1. Requires you to pass a Credentials implementation.
+  * DataStore for assignment 1 and 2. Requires you to pass a Credentials implementation.
   *
   * @param credentials The database credentials.
   */
@@ -207,15 +207,18 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
-              SELECT *
-              FROM $tablePrefix.ACDOCA_HPI a
-              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
-              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
+              SELECT
+                bestellung.*,
+                material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
+                werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
+              FROM $tablePrefix.ACDOCA_HPI bestellung
+              JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
+              JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
               WHERE
-                KUNDE = ?
+                bestellung.KUNDE = ?
                 AND
-                KONTO = $salesAccount
-              ORDER BY BUCHUNGSDATUM DESC
+                bestellung.KONTO = $salesAccount
+              ORDER BY bestellung.BUCHUNGSDATUM DESC
               LIMIT $numOrders
               """
       try {
@@ -231,6 +234,57 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
 
+    orders
+  }
+
+  /**
+    * Returns all orders of the given customer which aren't yet fully paid until the given date.
+    * @param customer The customer to check.
+    * @param date The date until which the orders would have to be paid.
+    * @return
+    */
+  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
+    var orders = List.empty[Order]
+    connection.foreach(connection => {
+      val sql = s"""
+            SELECT *, bestell_summe
+            FROM (
+              SELECT
+                (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS bestell_summe,
+                bestellung.*,
+                material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
+                werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
+              FROM $tablePrefix.ACDOCA_HPI bestellung
+              JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
+              JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+
+              WHERE bestellung.KUNDE = ?
+              AND bestellung.BUCHUNGSDATUM <= ?
+              AND bestellung.KONTO = $costsAccount
+            )
+            WHERE bestell_summe < (
+              SELECT SUM(HAUS_BETRAG) * (-1) as amount
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO IN ($costsAccount, $salesAccount)
+            )
+        """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, customer.customerId)
+        preparedStatement.setString(2, date.unformatted)
+        preparedStatement.setString(3, customer.customerId)
+        preparedStatement.setString(4, date.unformatted)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          orders = orders :+ new Order(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
     orders
   }
 
@@ -360,46 +414,6 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
     products
-  }
-
-  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
-    var orders = List.empty[Order]
-    connection.foreach(connection => {
-      val sql = s"""
-            SELECT *, amount
-            FROM (
-              SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
-              FROM $tablePrefix.ACDOCA_HPI a
-              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
-              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
-              WHERE KUNDE = ?
-              AND BUCHUNGSDATUM <= ?
-              AND KONTO = $costsAccount
-            )
-            WHERE AMOUNT < (
-              SELECT SUM(HAUS_BETRAG) * (-1) as amount
-              FROM $tablePrefix.ACDOCA_HPI
-              WHERE KUNDE = ?
-              AND BUCHUNGSDATUM <= ?
-              AND KONTO IN ($costsAccount, $salesAccount)
-            )
-        """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setString(2, date.unformatted)
-        preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setString(4, date.unformatted)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          orders = orders :+ new Order(resultSet)
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    orders
   }
 
   def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {

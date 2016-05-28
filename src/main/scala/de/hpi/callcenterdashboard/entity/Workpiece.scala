@@ -4,5 +4,5 @@ import java.sql.ResultSet
 
 class Workpiece(result: ResultSet) {
   val id = result.getString("MATERIALNUMMER")
-  val name = result.getString("TEXT")
+  val name = result.getString("MATERIAL_TEXT")
 }
