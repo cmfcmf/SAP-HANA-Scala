@@ -479,8 +479,6 @@ class DataStore(credentials: CredentialsTrait) {
             LIMIT ?
           """
 
-      println(sql)
-      println(filter)
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, filter.startDate.unformatted)
@@ -574,8 +572,6 @@ class DataStore(credentials: CredentialsTrait) {
              )
            GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
          """
-
-      println(sql)
 
       try {
         val preparedStatement = connection.prepareStatement(sql)
