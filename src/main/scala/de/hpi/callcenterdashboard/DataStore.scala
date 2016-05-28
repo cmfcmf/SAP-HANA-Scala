@@ -555,12 +555,27 @@ class DataStore(credentials: CredentialsTrait) {
            FROM $tablePrefix.ACDOCA_HPI AS bestellung
            JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
            JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
+           JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+           JOIN $tablePrefix.MARA_HPI material_info_int ON (material_info_int.MATERIALNUMMER = bestellung.MATERIAL)
            LEFT JOIN ($regionSql) regionen ON (regionen.REGION_LAND = land.LAND)
            WHERE
-             KONTO = $salesAccount
-             AND BUCHUNGSDATUM BETWEEN ? AND ?
+             bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+             AND bestellung.KONTO = $salesAccount
+             AND (? = '' OR kunde.LAND = ?)
+             AND (? = '' OR kunde.REGION = ?)
+             AND (? = '' OR bestellung.WERK = ?)
+             AND (? = '' OR material_info_int.MATERIALART = ?)
+             AND EXISTS(
+               SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
+               WHERE
+                 material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
+                 AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
+                 AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
+             )
            GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
          """
+
+      println(sql)
 
       try {
         val preparedStatement = connection.prepareStatement(sql)
@@ -569,17 +584,24 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(3, filter.startDate.unformatted)
         preparedStatement.setString(4, filter.endDate.unformatted)
 
+        preparedStatement.setString(5, filter.countryId)
+        preparedStatement.setString(6, filter.countryId)
+        preparedStatement.setString(7, filter.regionId)
+        preparedStatement.setString(8, filter.regionId)
+        preparedStatement.setString(9, filter.factoryId)
+        preparedStatement.setString(10, filter.factoryId)
+        preparedStatement.setString(11, filter.materialType)
+        preparedStatement.setString(12, filter.materialType)
+        preparedStatement.setString(13, filter.productHierarchyVal)
+        preparedStatement.setString(14, filter.salesOrganization)
+        preparedStatement.setString(15, filter.salesOrganization)
+
         val resultSet = preparedStatement.executeQuery()
         var currentCountryId = ""
         var regionalSales = List.empty[(Region, Money)]
         while (resultSet.next()) {
           // The following code is one of the ugliest things I've ever writte :-(
           if (resultSet.getString("LAND") != currentCountryId) {
-            if (sales.nonEmpty) {
-              val old = sales.last
-              sales = sales.dropRight(1)
-              sales = sales :+ (old._1, old._2, regionalSales)
-            }
             sales = sales :+(
               Country(currentCountryId, resultSet.getString("LAND_NAME")),
               Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG")),
@@ -592,6 +614,11 @@ class DataStore(credentials: CredentialsTrait) {
               Region(resultSet.getString("REGION_ID"), resultSet.getString("REGION_NAME")),
               Money(resultSet.getBigDecimal("REGION_SUMME"), resultSet.getString("HAUS_WAEHRUNG"))
               )
+            if (sales.nonEmpty) {
+              val old = sales.last
+              sales = sales.dropRight(1)
+              sales = sales :+ (old._1, old._2, regionalSales)
+            }
           }
           currentCountryId = resultSet.getString("LAND")
         }
