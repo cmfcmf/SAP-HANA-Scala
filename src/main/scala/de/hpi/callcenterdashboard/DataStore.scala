@@ -599,7 +599,7 @@ class DataStore(credentials: CredentialsTrait) {
           // The following code is one of the ugliest things I've ever writte :-(
           if (resultSet.getString("LAND") != currentCountryId) {
             sales = sales :+(
-              Country(currentCountryId, resultSet.getString("LAND_NAME")),
+              Country(resultSet.getString("LAND"), resultSet.getString("LAND_NAME")),
               Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG")),
               List.empty[(Region, Money)]
               )
