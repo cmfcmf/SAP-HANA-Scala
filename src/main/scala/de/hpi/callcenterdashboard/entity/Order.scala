@@ -19,6 +19,7 @@ class Order(result: ResultSet) {
   )
   val customer = result.getString("KUNDE")
   val factory = new Factory(result)
+  val quantity = math.abs(result.getInt("MENGE"))
   val product = new Product(result)
   val bookingDate = new FormattedDate(result.getString("BUCHUNGSDATUM"))
 }

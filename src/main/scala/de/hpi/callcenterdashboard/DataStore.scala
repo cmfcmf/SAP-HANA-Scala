@@ -211,11 +211,13 @@ class DataStore(credentials: CredentialsTrait) {
       val sql = s"""
               SELECT
                 bestellung.*,
+                acdoca.MSL AS MENGE,
                 material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
                 werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
               FROM $tablePrefix.ACDOCA_HPI bestellung
               JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
               JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+              JOIN $tablePrefix.ACDOCA acdoca ON (acdoca.RCLNT = 800 AND acdoca.RBUKRS = 'F010' AND acdoca.GJAHR = bestellung.GESCHAFTSJAHR AND acdoca.BELNR = bestellung.BELEGNUMMER AND acdoca.RACCT = bestellung.KONTO)
               WHERE
                 bestellung.KUNDE = ?
                 AND
@@ -255,11 +257,13 @@ class DataStore(credentials: CredentialsTrait) {
               SELECT
                 (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS bestell_summe,
                 bestellung.*,
+                acdoca.MSL AS MENGE,
                 material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
                 werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
               FROM $tablePrefix.ACDOCA_HPI bestellung
               JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
               JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+              JOIN $tablePrefix.ACDOCA acdoca ON (acdoca.RCLNT = 800 AND acdoca.RBUKRS = 'F010' AND acdoca.GJAHR = bestellung.GESCHAFTSJAHR AND acdoca.BELNR = bestellung.BELEGNUMMER AND acdoca.RACCT = bestellung.KONTO)
 
               WHERE bestellung.KUNDE = ?
               AND bestellung.BUCHUNGSDATUM <= ?
