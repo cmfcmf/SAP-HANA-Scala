@@ -6,7 +6,7 @@ import org.scalatra.scalate.ScalateSupport
 
 class CompanyServlet extends DataStoreAwareServlet with ScalateSupport with DateAwareServlet {
   // country must be before region!
-  val filterAttributes = List("factory", "region", "country", "materialType", "productHierarchyVal", "salesOrganization")
+  val filterAttributes = List("factory", "region", "country", "materialType", "productHierarchyVal", "salesOrganization", "product")
 
   get("/statistics") {
     contentType = "text/html"
@@ -19,7 +19,8 @@ class CompanyServlet extends DataStoreAwareServlet with ScalateSupport with Date
       Option(session.getAttribute("materialType").asInstanceOf[String]).getOrElse(""),
       Option(session.getAttribute("productHierarchyVal").asInstanceOf[String]).getOrElse(""),
       Option(session.getAttribute("country").asInstanceOf[String]).getOrElse(""),
-      Option(session.getAttribute("region").asInstanceOf[String]).getOrElse("")
+      Option(session.getAttribute("region").asInstanceOf[String]).getOrElse(""),
+      Option(session.getAttribute("product").asInstanceOf[String]).getOrElse("")
     )
     val cashCowProducts = dataStore.getCashCowProducts(10, filter)
     val worldWideSales = dataStore.getWorldWideSales(filter)
@@ -62,6 +63,7 @@ class CompanyServlet extends DataStoreAwareServlet with ScalateSupport with Date
       "materialTypes" -> dataStore.getMaterialTypes,
       "productHierarchy" -> dataStore.getProductHierarchy,
       "salesOrganizations" -> dataStore.getSalesOrganizations,
+      "products" -> dataStore.getProducts,
       "indent" -> ((n: String) => "|" + ("-" * n.toInt)),
       "isSelected" -> ((condition: String) => {
         val tmp = condition.split('=')

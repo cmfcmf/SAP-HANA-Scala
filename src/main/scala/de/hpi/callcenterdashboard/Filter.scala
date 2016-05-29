@@ -10,5 +10,6 @@ case class Filter(
                    materialType: String,
                    productHierarchyVal: String,
                    countryId: String,
-                   regionId: String) {
+                   regionId: String,
+                   productId: String) {
 }

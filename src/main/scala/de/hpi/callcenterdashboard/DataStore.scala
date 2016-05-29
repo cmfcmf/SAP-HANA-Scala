@@ -478,6 +478,7 @@ class DataStore(credentials: CredentialsTrait) {
                   AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
                   AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
               )
+              AND (? = '' OR bestellung.material = ?)
             GROUP BY bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG
             ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
             LIMIT ?
@@ -498,7 +499,9 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(11, filter.productHierarchyVal)
         preparedStatement.setString(12, filter.salesOrganization)
         preparedStatement.setString(13, filter.salesOrganization)
-        preparedStatement.setInt(14, numProducts)
+        preparedStatement.setString(14, filter.productId)
+        preparedStatement.setString(15, filter.productId)
+        preparedStatement.setInt(16, numProducts)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           products = products :+ (
@@ -574,6 +577,7 @@ class DataStore(credentials: CredentialsTrait) {
                  AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
                  AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
              )
+             AND (? = '' OR bestellung.material = ?)
            GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
          """
 
@@ -595,6 +599,8 @@ class DataStore(credentials: CredentialsTrait) {
         preparedStatement.setString(13, filter.productHierarchyVal)
         preparedStatement.setString(14, filter.salesOrganization)
         preparedStatement.setString(15, filter.salesOrganization)
+        preparedStatement.setString(16, filter.productId)
+        preparedStatement.setString(17, filter.productId)
 
         val resultSet = preparedStatement.executeQuery()
         var currentCountryId = ""
@@ -782,5 +788,34 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
     productHierarchy
+  }
+
+  def getProducts: List[Product] = {
+    var products = List.empty[Product]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT material_text.MATERIALNUMMER AS MATERIAL, material_text.TEXT AS MATERIAL_TEXT
+           FROM $tablePrefix.MAKT_HPI material_text
+           JOIN $tablePrefix.MVKE_HPI material_info ON (material_text.MATERIALNUMMER = material_info.MATERIALNUMMER)
+           WHERE material_info.VETRIEBSORGANISATION IN (
+             SELECT VKORG
+             FROM $tablePrefix.TVKO tvko
+             WHERE tvko.MANDT = 800 AND tvko.BUKRS = $bukrs
+           )
+           ORDER BY MATERIAL ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          products = products :+ new Product(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    products
   }
 }
