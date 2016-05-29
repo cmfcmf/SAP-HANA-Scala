@@ -1,0 +1,80 @@
+{{#filter}}
+  <form method="post" action="/company/statistics/filter" class="form-inline">
+    <div class="row">
+      <div class="col-xs-12">
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="sr-only" for="factory">Factory</label>
+              <select class="select2 form-control" id="factory" name="factory">
+                <option value="">All factories</option>
+                {{#factories}}
+                  <option value="{{id}}"{{#isSelected}}factory={{id}}{{/isSelected}}>{{name}}</option>
+                {{/factories}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="salesOrganization">Sales Organization</label>
+              <select class="select2 form-control" id="salesOrganization" name="salesOrganization">
+                <option value="">All sales organizations</option>
+                {{#salesOrganizations}}
+                  <option value="{{_1}}"{{#isSelected}}salesOrganization={{_1}}{{/isSelected}}>{{_2}}</option>
+                {{/salesOrganizations}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="materialType">Material Type</label>
+              <select class="select2 form-control" id="materialType" name="materialType">
+                <option value="">All material types</option>
+                {{#materialTypes}}
+                  <option value="{{_1}}"{{#isSelected}}materialType={{_1}}{{/isSelected}}>{{_2}}</option>
+                {{/materialTypes}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="productHierarchyVal">Product Hierachy</label>
+              <select class="select2 form-control" id="productHierarchyVal" name="productHierarchyVal">
+                <option value="">Everything</option>
+                {{#productHierarchy}}
+                  <option value="{{_1}}"{{#isSelected}}productHierarchyVal={{_1}}{{/isSelected}}>{{#indent}}{{_3}}{{/indent}}{{_2}}</option>
+                {{/productHierarchy}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="product">Product</label>
+              <select class="select2 form-control" id="product" name="product">
+                <option value="">All products</option>
+                {{#products}}
+                  <option value="{{id}}"{{#isSelected}}product={{id}}{{/isSelected}}>{{name}}</option>
+                {{/products}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="country">Country</label>
+              <select class="select2 form-control" id="country" name="country">
+                <option value="">All countries</option>
+                {{#countries}}
+                  <option value="{{id}}"{{#isSelected}}country={{id}}{{/isSelected}}>{{name}}</option>
+                {{/countries}}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="region">Region</label>
+              <select class="select2 form-control" id="region" name="region">
+                <option value="">All regions</option>
+                {{#regions}}
+                  <option value="{{id}}"{{#isSelected}}region={{id}}{{/isSelected}}>{{name}}</option>
+                {{/regions}}
+              </select>
+            </div>
+          </div>
+          <div class="panel-footer">
+            <button type="submit" class="btn btn-sm btn-primary" data-loading-text="Applying filter...">
+              <i class="fa fa-filter"></i> Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+{{/filter}}

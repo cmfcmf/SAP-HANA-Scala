@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
   <link href="/datepicker/css/bootstrap-datepicker3.min.css" rel="stylesheet">
   <link href="/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+  <link href="/select2/css/select2.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/custom.css">
   <!--[if lt IE 9]>
   <script src="/html5shiv.min.js"></script>
@@ -40,7 +41,15 @@
     // Enable PJAX.
     $(document).pjax('a', 'body', {
       fragment: 'body',
-      timeout: 1000
+      timeout: 2500
+    });
+    // Enable Select2 for dropdowns on initial page load.
+    $(function () {
+      $("select.select2").select2();
+    });
+    // Enable Select2 for dropdowns on subsequent page loads.
+    $(document).on('pjax:success', function() {
+      $("select.select2").select2();
     });
     // Use PJAX to submit forms.
     $('body').on('submit', 'form[data-pjax]', function(event) {
@@ -122,6 +131,7 @@
 <script src="/datepicker/js/bootstrap-datepicker.min.js"></script>
 <script src="/bootstrap-sortable/Scripts/moment.min.js"></script>
 <script src="/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+<script src="/select2/js/select2.min.js"></script>
 <script>
   // Initialize datepickers.
   $('#startDate').datepicker({format: 'yyyy-mm-dd'});

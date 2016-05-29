@@ -30,26 +30,26 @@
         </tr>
         </thead>
         <tbody>
-        {{#regionalSales}}
+        {{#worldWideSales}}
           <tr class="active">
-            <td colspan="2">{{_1}}</td>
-            {{#_3}}<td class="text-right" data-value="{{amountAsString}}"><strong>{{toString}}</strong></td>{{/_3}}
+            <td colspan="2">{{#_1}}{{name}}{{/_1}}</td>
+            {{#_2}}<td class="text-right" data-value="{{amountAsString}}"><strong>{{.}}</strong></td>{{/_2}}
           </tr>
-          {{#_4}}
+          {{#_3}}
             <tr>
               <td></td>
-              <td><em>{{_2}}</em></td>
-              <td class="text-right"><em>{{#_3}}{{toString}}{{/_3}}</em></td>
+              <td><em>{{#_1}}{{name}}{{/_1}}</em></td>
+              {{#_2}}<td class="text-right" data-value="{{amountAsString}}"><em>{{.}}</em></td>{{/_2}}
             </tr>
-          {{/_4}}
-        {{/regionalSales}}
-        {{^regionalSales}}
+          {{/_3}}
+        {{/worldWideSales}}
+        {{^worldWideSales}}
           <tr class="danger">
             <td colspan="3" class="text-center danger">
               <strong>We did not sell anything in the given time frame. Bad times :(</strong>
             </td>
           </tr>
-        {{/regionalSales}}
+        {{/worldWideSales}}
         </tbody>
       </table>
     </div>

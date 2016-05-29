@@ -5,7 +5,7 @@ import de.hpi.callcenterdashboard.utility._
 import java.sql.{Connection, DriverManager}
 
 /**
-  * DataStore for assignment 1. Requires you to pass a Credentials implementation.
+  * DataStore for assignment 1 and 2. Requires you to pass a Credentials implementation.
   *
   * @param credentials The database credentials.
   */
@@ -16,10 +16,12 @@ class DataStore(credentials: CredentialsTrait) {
   private val costsAccount = "0000792000"
   private val numOrders = 10
   private val numCustomers = 100
-  private val years = List("2014", "2013")
+  private val years = List("2015", "2014", "2013")
   private val houseCurrency = "EUR"
   private val mandant = 800
   private val language = "'E'"
+  private val calendarId = "'01'"
+  private val bukrs = "'F010'"
 
   /**
     * Opens the database connection.
@@ -207,15 +209,20 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
-              SELECT *
-              FROM $tablePrefix.ACDOCA_HPI a
-              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
-              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
+              SELECT
+                bestellung.*,
+                acdoca.MSL AS MENGE,
+                material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
+                werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
+              FROM $tablePrefix.ACDOCA_HPI bestellung
+              JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
+              JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+              JOIN $tablePrefix.ACDOCA acdoca ON (acdoca.RCLNT = 800 AND acdoca.RBUKRS = 'F010' AND acdoca.GJAHR = bestellung.GESCHAFTSJAHR AND acdoca.BELNR = bestellung.BELEGNUMMER AND acdoca.RACCT = bestellung.KONTO)
               WHERE
-                KUNDE = ?
+                bestellung.KUNDE = ?
                 AND
-                KONTO = $salesAccount
-              ORDER BY BUCHUNGSDATUM DESC
+                bestellung.KONTO = $salesAccount
+              ORDER BY bestellung.BUCHUNGSDATUM DESC
               LIMIT $numOrders
               """
       try {
@@ -231,6 +238,60 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
 
+    orders
+  }
+
+  /**
+    * Returns all orders of the given customer which aren't yet fully paid until the given date.
+    *
+    * @param customer The customer to check.
+    * @param date The date until which the orders would have to be paid.
+    * @return
+    */
+  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
+    var orders = List.empty[Order]
+    connection.foreach(connection => {
+      val sql = s"""
+            SELECT *, bestell_summe
+            FROM (
+              SELECT
+                (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS bestell_summe,
+                bestellung.*,
+                acdoca.MSL AS MENGE,
+                material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
+                werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
+              FROM $tablePrefix.ACDOCA_HPI bestellung
+              JOIN $tablePrefix.T001W_HPI werk ON (werk.WERK = bestellung.WERK)
+              JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+              JOIN $tablePrefix.ACDOCA acdoca ON (acdoca.RCLNT = 800 AND acdoca.RBUKRS = 'F010' AND acdoca.GJAHR = bestellung.GESCHAFTSJAHR AND acdoca.BELNR = bestellung.BELEGNUMMER AND acdoca.RACCT = bestellung.KONTO)
+
+              WHERE bestellung.KUNDE = ?
+              AND bestellung.BUCHUNGSDATUM <= ?
+              AND bestellung.KONTO = $costsAccount
+            )
+            WHERE bestell_summe < (
+              SELECT SUM(HAUS_BETRAG) * (-1) as amount
+              FROM $tablePrefix.ACDOCA_HPI
+              WHERE KUNDE = ?
+              AND BUCHUNGSDATUM <= ?
+              AND KONTO IN ($costsAccount, $salesAccount)
+            )
+        """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, customer.customerId)
+        preparedStatement.setString(2, date.unformatted)
+        preparedStatement.setString(3, customer.customerId)
+        preparedStatement.setString(4, date.unformatted)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          orders = orders :+ new Order(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
     orders
   }
 
@@ -289,40 +350,59 @@ class DataStore(credentials: CredentialsTrait) {
     }
   }
 
-  def getProductSalesPercent(customerId: String, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float)] = {
-    var products = List.empty[(Product, Float)]
+  /**
+    * For a given customer and start and end date, calculate how much of the sales the sold products make up.
+    *
+    * @param customer The customer.
+    * @param startDate The start date.
+    * @param endDate The end date.
+    * @return Triples of the form (Product, Percentage, Absolute amount)
+    */
+  def getProductSalesPercent(customer: Customer, startDate: FormattedDate, endDate: FormattedDate): List[(Product, Float, Money)] = {
+    var products = List.empty[(Product, Float, Money)]
     connection.foreach(connection => {
+      // @todo We currently return all products ever sold to that customer.
       val totalAmountQuery = s"""
-        SELECT SUM(HAUS_BETRAG) AS TOTAL_AMOUNT
+        SELECT SUM(HAUS_BETRAG) AS GESAMMT_UMSATZ
         FROM $tablePrefix.ACDOCA_HPI
-        WHERE BUCHUNGSDATUM >= ?
-        AND BUCHUNGSDATUM <= ?
-        AND KUNDE = ?
-        AND KONTO = $salesAccount
+        WHERE BUCHUNGSDATUM BETWEEN ? AND ?
+          AND KUNDE = ?
+          AND KONTO = $salesAccount
         """
       val sql = s"""
-        SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, (SUM(HAUS_BETRAG) / TOTAL_AMOUNT) AS PERCENTAGE, HAUS_WAEHRUNG
-        FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI, ($totalAmountQuery)
-        WHERE BUCHUNGSDATUM >= ?
-        AND BUCHUNGSDATUM <= ?
-        AND KUNDE = ?
-        AND KONTO = $salesAccount
-        AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
-        GROUP BY KUNDE, MATERIAL, TEXT, HAUS_WAEHRUNG, TOTAL_AMOUNT
-        ORDER BY SUM(HAUS_BETRAG) DESC
+        SELECT
+          SUM(bestellung.HAUS_BETRAG) AS UMSATZ, bestellung.HAUS_WAEHRUNG,
+          (SUM(bestellung.HAUS_BETRAG) / GESAMMT_UMSATZ) * 100 AS UMSATZANTEIL,
+          GESAMMT_UMSATZ,
+          bestellung.MATERIAL AS MATERIAL,
+          material.TEXT AS MATERIAL_TEXT
+        FROM
+          $tablePrefix.ACDOCA_HPI bestellung,
+          ($totalAmountQuery),
+          $tablePrefix.MAKT_HPI material
+        WHERE bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+          AND bestellung.KUNDE = ?
+          AND bestellung.KONTO = $salesAccount
+          AND material.MATERIALNUMMER = bestellung.MATERIAL
+        GROUP BY bestellung.KUNDE, bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG, GESAMMT_UMSATZ
+        ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
         """
 
       try {
         val preparedStatement = connection.prepareStatement(sql)
         preparedStatement.setString(1, startDate.unformatted)
         preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setString(3, customerId)
+        preparedStatement.setString(3, customer.customerId)
         preparedStatement.setString(4, startDate.unformatted)
         preparedStatement.setString(5, endDate.unformatted)
-        preparedStatement.setString(6, customerId)
+        preparedStatement.setString(6, customer.customerId)
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
-          products = products :+ (new Product(resultSet), resultSet.getFloat("PERCENTAGE") * 100)
+          products = products :+ (
+            new Product(resultSet),
+            resultSet.getFloat("UMSATZANTEIL"),
+            Money(resultSet.getBigDecimal("UMSATZ"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
         }
       } catch {
         case e: Throwable => printError(e)
@@ -331,26 +411,403 @@ class DataStore(credentials: CredentialsTrait) {
     products
   }
 
-  def getProductHitlist(numProducts: Int = 0, startDate: FormattedDate, endDate: FormattedDate): List[Product] = {
+  /**
+    * Calculates the average amount of working days it takes the customer to pay.
+    *
+    * @param customer The customer.
+    * @return
+    */
+  def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {
+    var averagePaymentTime = 0
+    connection.foreach(connection => {
+      val sql = s"""
+              SELECT
+                  ROUND(AVG(WORKDAYS_BETWEEN($calendarId, A.BUCHUNGSDATUM, B.BUCHUNGSDATUM, '$tablePrefix')), 0) AS ZAHLUNGSDAUER
+                  FROM $tablePrefix.ACDOCA_HPI AS A
+                  JOIN $tablePrefix.ACDOCA_HPI AS B ON (
+                      A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount
+                  )
+              WHERE A.KUNDE = ?
+              GROUP BY A.KUNDE
+        """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, customer.customerId)
+
+        val resultSet = preparedStatement.executeQuery()
+        if (resultSet.next()) {
+          averagePaymentTime = resultSet.getInt("ZAHLUNGSDAUER")
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    averagePaymentTime
+  }
+
+  /**
+    * Creates a list of products which were sold best in the given timefframe.
+    *
+    * @param numProducts The number of products to return.
+    * @param filter The filter to apply.
+    * @return A list of touples containing the product and the sales sum.
+    */
+  def getCashCowProducts(numProducts: Int = 0, filter: Filter): List[(Product, Money)] = {
+    var products = List.empty[(Product, Money)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+            SELECT
+              SUM(HAUS_BETRAG) AS SUMME, bestellung.HAUS_WAEHRUNG,
+              bestellung.MATERIAL AS MATERIAL, material.TEXT AS MATERIAL_TEXT
+            FROM $tablePrefix.ACDOCA_HPI bestellung
+            JOIN $tablePrefix.KNA1_HPI kunde ON (kunde.KUNDE = bestellung.KUNDE)
+            JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+            JOIN $tablePrefix.MARA_HPI material_info_int ON (material_info_int.MATERIALNUMMER = bestellung.MATERIAL)
+            WHERE
+              bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+              AND bestellung.KONTO = $salesAccount
+              AND (? = '' OR kunde.LAND = ?)
+              AND (? = '' OR kunde.REGION = ?)
+              AND (? = '' OR bestellung.WERK = ?)
+              AND (? = '' OR material_info_int.MATERIALART = ?)
+              AND EXISTS(
+                SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
+                WHERE
+                  material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
+                  AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
+                  AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
+              )
+              AND (? = '' OR bestellung.material = ?)
+            GROUP BY bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG
+            ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
+            LIMIT ?
+          """
+
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, filter.startDate.unformatted)
+        preparedStatement.setString(2, filter.endDate.unformatted)
+        preparedStatement.setString(3, filter.countryId)
+        preparedStatement.setString(4, filter.countryId)
+        preparedStatement.setString(5, filter.regionId)
+        preparedStatement.setString(6, filter.regionId)
+        preparedStatement.setString(7, filter.factoryId)
+        preparedStatement.setString(8, filter.factoryId)
+        preparedStatement.setString(9, filter.materialType)
+        preparedStatement.setString(10, filter.materialType)
+        preparedStatement.setString(11, filter.productHierarchyVal)
+        preparedStatement.setString(12, filter.salesOrganization)
+        preparedStatement.setString(13, filter.salesOrganization)
+        preparedStatement.setString(14, filter.productId)
+        preparedStatement.setString(15, filter.productId)
+        preparedStatement.setInt(16, numProducts)
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          products = products :+ (
+            new Product(resultSet),
+            Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG"))
+            )
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    products
+  }
+
+  /**
+    * Get the world wide sales sum in a given date range.
+    *
+    * @param filter The filter to apply.
+    * @return Triples of short country code, sales sum, country name.
+    */
+  def getWorldWideSales(filter: Filter): List[(Country, Money, List[(Region, Money)])] = {
+    var sales = List.empty[(Country, Money, List[(Region, Money)])]
+    connection.foreach(connection => {
+      val regionSql =
+        s"""
+           SELECT
+             SUM(HAUS_BETRAG) AS REGION_SUMME,
+             region.BEZEI     AS REGION_NAME,
+             kunde.LAND       AS REGION_LAND,
+             kunde.REGION     AS REGION_ID
+           FROM $tablePrefix.ACDOCA_HPI AS bestellung
+           JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
+           JOIN $tablePrefix.T005U AS region ON (
+             kunde.REGION = region.BLAND
+             AND
+             kunde.LAND = region.LAND1
+             AND region.SPRAS = 'E' AND region.MANDT = $mandant
+           )
+           WHERE
+             KONTO = $salesAccount
+             AND bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+             AND kunde.REGION <> ''
+           GROUP BY region.BEZEI, kunde.LAND, kunde.REGION
+         """
+
+      val sql =
+        s"""
+           SELECT
+             SUM(bestellung.HAUS_BETRAG) AS SUMME,
+             bestellung.HAUS_WAEHRUNG,
+             kunde.LAND                  AS LAND,
+             land.NAME                   AS LAND_NAME,
+             REGION_SUMME,
+             REGION_NAME,
+             REGION_ID
+           FROM $tablePrefix.ACDOCA_HPI AS bestellung
+           JOIN $tablePrefix.KNA1_HPI AS kunde ON bestellung.KUNDE = kunde.KUNDE
+           JOIN $tablePrefix.T005T_HPI AS land ON (kunde.LAND = land.LAND AND land.SPRACHE = $language)
+           JOIN $tablePrefix.MAKT_HPI material ON (material.MATERIALNUMMER = bestellung.MATERIAL)
+           JOIN $tablePrefix.MARA_HPI material_info_int ON (material_info_int.MATERIALNUMMER = bestellung.MATERIAL)
+           LEFT JOIN ($regionSql) regionen ON (regionen.REGION_LAND = land.LAND)
+           WHERE
+             bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
+             AND bestellung.KONTO = $salesAccount
+             AND (? = '' OR kunde.LAND = ?)
+             AND (? = '' OR kunde.REGION = ?)
+             AND (? = '' OR bestellung.WERK = ?)
+             AND (? = '' OR material_info_int.MATERIALART = ?)
+             AND EXISTS(
+               SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
+               WHERE
+                 material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
+                 AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
+                 AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
+             )
+             AND (? = '' OR bestellung.material = ?)
+           GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
+         """
+
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, filter.startDate.unformatted)
+        preparedStatement.setString(2, filter.endDate.unformatted)
+        preparedStatement.setString(3, filter.startDate.unformatted)
+        preparedStatement.setString(4, filter.endDate.unformatted)
+
+        preparedStatement.setString(5, filter.countryId)
+        preparedStatement.setString(6, filter.countryId)
+        preparedStatement.setString(7, filter.regionId)
+        preparedStatement.setString(8, filter.regionId)
+        preparedStatement.setString(9, filter.factoryId)
+        preparedStatement.setString(10, filter.factoryId)
+        preparedStatement.setString(11, filter.materialType)
+        preparedStatement.setString(12, filter.materialType)
+        preparedStatement.setString(13, filter.productHierarchyVal)
+        preparedStatement.setString(14, filter.salesOrganization)
+        preparedStatement.setString(15, filter.salesOrganization)
+        preparedStatement.setString(16, filter.productId)
+        preparedStatement.setString(17, filter.productId)
+
+        val resultSet = preparedStatement.executeQuery()
+        var currentCountryId = ""
+        var regionalSales = List.empty[(Region, Money)]
+        while (resultSet.next()) {
+          // The following code is one of the ugliest things I've ever writte :-(
+          if (resultSet.getString("LAND") != currentCountryId) {
+            sales = sales :+(
+              Country(resultSet.getString("LAND"), resultSet.getString("LAND_NAME")),
+              Money(resultSet.getBigDecimal("SUMME"), resultSet.getString("HAUS_WAEHRUNG")),
+              List.empty[(Region, Money)]
+              )
+            regionalSales = List.empty[(Region, Money)]
+          }
+          if (resultSet.getString("REGION_ID") != null) {
+            regionalSales = regionalSales :+ (
+              Region(resultSet.getString("REGION_ID"), resultSet.getString("REGION_NAME")),
+              Money(resultSet.getBigDecimal("REGION_SUMME"), resultSet.getString("HAUS_WAEHRUNG"))
+              )
+            if (sales.nonEmpty) {
+              val old = sales.last
+              sales = sales.dropRight(1)
+              sales = sales :+ (old._1, old._2, regionalSales)
+            }
+          }
+          currentCountryId = resultSet.getString("LAND")
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    sales
+  }
+
+  /**
+    * Get a list of all the factories.
+    *
+    * @return
+    */
+  def getFactories: List[Factory] = {
+    var factories = List.empty[Factory]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT werk.WERK AS WERK, werk.NAME2 AS WERK_NAME, werk.STRASSE AS WERK_STRASSE, werk.ZIPCODE AS WERK_PLZ, werk.CITY AS WERK_STADT, werk.REGION AS WERK_REGION, werk.LAND AS WERK_LAND
+           FROM $tablePrefix.T001W_HPI werk
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          factories = factories :+ new Factory(resultSet)
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    factories
+  }
+
+  def getCountries: List[Country] = {
+    var countries = List.empty[Country]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT land.LAND AS LAND, land.NAME as LAND_NAME
+           FROM $tablePrefix.T005T_HPI land
+           WHERE land.SPRACHE = $language
+           ORDER BY land.NAME ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          countries = countries :+ new Country(resultSet.getString("LAND"), resultSet.getString("LAND_NAME"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    countries
+  }
+
+  def getRegionsForCountry(country: String): List[Region] = {
+    var regions = List.empty[Region]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT region.BLAND AS ID, region.BEZEI AS NAME
+           FROM $tablePrefix.T005U as region
+
+           WHERE region.MANDT = $mandant AND region.SPRAS = $language AND region.LAND1 = ?
+           ORDER BY NAME ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+        preparedStatement.setString(1, country)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          regions = regions :+ new Region(resultSet.getString("ID"), resultSet.getString("NAME"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    regions
+  }
+
+  def getMaterialTypes: List[(String, String)] = {
+    var materialTypes = List.empty[(String, String)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT DISTINCT material_typ.MTART AS ID, material_typ.MTBEZ AS NAME
+           FROM $tablePrefix.T134T material_typ
+           JOIN $tablePrefix.MARA_HPI as material ON (material.MATERIALART = material_typ.MTART)
+
+           WHERE material_typ.SPRAS = $language
+            AND material_typ.MANDT = $mandant
+           ORDER BY material_typ.MTBEZ ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          materialTypes = materialTypes :+ (resultSet.getString("ID"), resultSet.getString("NAME"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    materialTypes
+  }
+
+  def getSalesOrganizations: List[(String, String)] = {
+    var salesOrganizsations = List.empty[(String, String)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT tvkot.VKORG AS ID, tvkot.VTEXT AS NAME
+           FROM $tablePrefix.TVKOT tvkot
+           JOIN $tablePrefix.TVKO tvko ON (tvko.MANDT = tvkot.MANDT AND tvko.VKORG = tvkot.VKORG AND tvko.BUKRS = $bukrs)
+           WHERE SPRAS = $language AND tvkot.MANDT = $mandant
+           ORDER BY NAME ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          salesOrganizsations = salesOrganizsations :+ (resultSet.getString("ID"), resultSet.getString("NAME"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    salesOrganizsations
+  }
+
+  def getProductHierarchy: List[(String, String, Int)] = {
+    var productHierarchy = List.empty[(String, String, Int)]
+    connection.foreach(connection => {
+      val sql =
+        s"""
+           SELECT hierarchie.PRODH AS ID, hierarchie.STUFE AS STUFE, hierarchie_text.TEXT AS NAME
+           FROM $tablePrefix.T179 hierarchie
+           JOIN $tablePrefix.T179T_HPI as hierarchie_text ON (hierarchie.PRODH = hierarchie_text.PRODUKTHIERARCHIE)
+
+           WHERE hierarchie.MANDT = $mandant
+           ORDER BY ID ASC
+         """
+      try {
+        val preparedStatement = connection.prepareStatement(sql)
+
+        val resultSet = preparedStatement.executeQuery()
+        while (resultSet.next()) {
+          productHierarchy = productHierarchy :+ (resultSet.getString("ID"), resultSet.getString("NAME"), resultSet.getInt("STUFE"))
+        }
+      } catch {
+        case e: Throwable => printError(e)
+      }
+    })
+    productHierarchy
+  }
+
+  def getProducts: List[Product] = {
     var products = List.empty[Product]
     connection.foreach(connection => {
       val sql =
         s"""
-            SELECT MATERIAL, TEXT, SUM(HAUS_BETRAG) AS AMOUNT, HAUS_WAEHRUNG
-            FROM $tablePrefix.ACDOCA_HPI, $tablePrefix.MAKT_HPI
-            WHERE
-              BUCHUNGSDATUM BETWEEN ? AND ?
-              AND KONTO = $salesAccount
-              AND $tablePrefix.ACDOCA_HPI.MATERIAL = $tablePrefix.MAKT_HPI.MATERIALNUMMER
-            GROUP BY MATERIAL, TEXT, HAUS_WAEHRUNG
-            ORDER BY SUM(HAUS_BETRAG) DESC
-            LIMIT ?
-          """
+           SELECT material_text.MATERIALNUMMER AS MATERIAL, material_text.TEXT AS MATERIAL_TEXT
+           FROM $tablePrefix.MAKT_HPI material_text
+           JOIN $tablePrefix.MVKE_HPI material_info ON (material_text.MATERIALNUMMER = material_info.MATERIALNUMMER)
+           WHERE material_info.VETRIEBSORGANISATION IN (
+             SELECT VKORG
+             FROM $tablePrefix.TVKO tvko
+             WHERE tvko.MANDT = 800 AND tvko.BUKRS = $bukrs
+           )
+           ORDER BY MATERIAL ASC
+         """
       try {
         val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setInt(3, numProducts)
+
         val resultSet = preparedStatement.executeQuery()
         while (resultSet.next()) {
           products = products :+ new Product(resultSet)
@@ -360,195 +817,5 @@ class DataStore(credentials: CredentialsTrait) {
       }
     })
     products
-  }
-
-  def getOutstandingOrdersOfCustomerUpTo(customer: Customer, date: FormattedDate): List[Order] = {
-    var orders = List.empty[Order]
-    connection.foreach(connection => {
-      val sql = s"""
-            SELECT *, amount
-            FROM (
-              SELECT *, (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS AMOUNT
-              FROM $tablePrefix.ACDOCA_HPI a
-              LEFT JOIN $tablePrefix.T001W_HPI t ON (t.WERK = a.WERK)
-              LEFT JOIN $tablePrefix.MAKT_HPI m ON (m.MATERIALNUMMER = a.MATERIAL)
-              WHERE KUNDE = ?
-              AND BUCHUNGSDATUM <= ?
-              AND KONTO = $costsAccount
-            )
-            WHERE AMOUNT < (
-              SELECT SUM(HAUS_BETRAG) * (-1) as amount
-              FROM $tablePrefix.ACDOCA_HPI
-              WHERE KUNDE = ?
-              AND BUCHUNGSDATUM <= ?
-              AND KONTO IN ($costsAccount, $salesAccount)
-            )
-        """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, customer.customerId)
-        preparedStatement.setString(2, date.unformatted)
-        preparedStatement.setString(3, customer.customerId)
-        preparedStatement.setString(4, date.unformatted)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          orders = orders :+ new Order(resultSet)
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    orders
-  }
-
-  def getAveragePaymentTimeOfCustomer(customer : Customer): Int = {
-    var averagePaymentTime = 0
-    connection.foreach(connection => {
-      val sql = s"""
-              SELECT AVG(paymentDiff) AS avgPaymentTime
-              FROM(
-                SELECT
-                  A.KUNDE AS KUNDE,
-                  WORKDAYS_BETWEEN('01', A.BUCHUNGSDATUM, B.BUCHUNGSDATUM, '$tablePrefix') AS paymentDiff
-                FROM $tablePrefix.ACDOCA_HPI AS A
-                JOIN $tablePrefix.ACDOCA_HPI AS B ON (
-                  A.BELEGNUMMER = B.BELEGNUMMER AND A.KONTO = $costsAccount AND B.KONTO = $salesAccount
-                )
-              )
-              WHERE KUNDE = ?
-              GROUP BY KUNDE
-        """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, customer.customerId)
-
-        val resultSet = preparedStatement.executeQuery()
-        if (resultSet.next()) {
-          averagePaymentTime = Math.round(resultSet.getFloat("avgPaymentTime"))
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    averagePaymentTime
-  }
-
-  def getSalesOfCountryOrRegion(country: String, region: String, startDate: FormattedDate, endDate: FormattedDate) : Money = {
-    var salesOfCountryOrRegion = new Money(0, houseCurrency)
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT SUM(HAUS_BETRAG) AS sales, HAUS_WAEHRUNG
-            FROM $tablePrefix.ACDOCA_HPI AS A JOIN $tablePrefix.KNA1_HPI AS B ON A.KUNDE = B.KUNDE
-            WHERE
-              ( ? = '' OR CONTAINS(REGION, ?, FUZZY(0.8)))
-              AND
-              ( ? = ''  OR CONTAINS(LAND, ?, FUZZY(0.8)))
-            AND KONTO = $salesAccount
-            AND BUCHUNGSDATUM BETWEEN ? AND ?
-            GROUP BY LAND, HAUS_WAEHRUNG
-        """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, region)
-        preparedStatement.setString(2, region)
-        preparedStatement.setString(3, country)
-        preparedStatement.setString(4, country)
-        preparedStatement.setString(5, startDate.unformatted)
-        preparedStatement.setString(6, endDate.unformatted)
-
-        val resultSet = preparedStatement.executeQuery()
-        if (resultSet.next()) {
-          salesOfCountryOrRegion = Money(
-            resultSet.getBigDecimal("sales"),
-            resultSet.getString("HAUS_WAEHRUNG"))
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    salesOfCountryOrRegion
-  }
-
-  /**
-    * Given a start and end date, return a list of tuples of (Country, SalesSum) for each country
-    * where we sold something. The SalesSum is the sum of all sales for that country.
-    *
-    * @param startDate The start date.
-    * @param endDate   The end date.
-    * @return
-    */
-  def getSalesForRegionsOfCountry(countryCode : String, startDate: FormattedDate, endDate: FormattedDate):
-    List[(String, String, Money)] = {
-    var sales = List.empty[(String, String, Money)]
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, t.BEZEI AS region_name
-            FROM $tablePrefix.ACDOCA_HPI AS a
-              JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
-              JOIN $tablePrefix.T005U as t ON (t.MANDT = $mandant AND REGION = t.BLAND AND LAND = t.LAND1 AND t.SPRAS = 'E')
-            WHERE
-              KONTO = $salesAccount
-              AND BUCHUNGSDATUM BETWEEN ? AND ?
-              AND LAND = ?
-              AND REGION <> ''
-            GROUP BY t.BEZEI, HAUS_WAEHRUNG
-         """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-        preparedStatement.setString(3, countryCode)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          sales = sales :+ (
-            countryCode,
-            resultSet.getString("region_name"),
-            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG"))
-            )
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    sales
-  }
-
-  def getWorldWideSales(startDate: FormattedDate, endDate: FormattedDate): List[(String, Money, String)] = {
-    var sales = List.empty[(String, Money, String)]
-    connection.foreach(connection => {
-      val sql =
-        s"""
-            SELECT SUM(HAUS_BETRAG) as sales, HAUS_WAEHRUNG, k.LAND AS LAENDERKUERZEL, b.NAME AS LANDNAME
-            FROM $tablePrefix.ACDOCA_HPI AS a
-              JOIN $tablePrefix.KNA1_HPI AS k ON a.KUNDE = k.KUNDE
-              JOIN $tablePrefix.T005T_HPI AS b ON k.LAND = b.LAND
-            WHERE
-              KONTO = $salesAccount
-              AND BUCHUNGSDATUM BETWEEN ? AND ?
-              AND SPRACHE = 'E'
-            GROUP BY k.LAND, b.NAME, HAUS_WAEHRUNG
-         """
-      try {
-        val preparedStatement = connection.prepareStatement(sql)
-        preparedStatement.setString(1, startDate.unformatted)
-        preparedStatement.setString(2, endDate.unformatted)
-
-        val resultSet = preparedStatement.executeQuery()
-        while (resultSet.next()) {
-          sales = sales :+ (
-            resultSet.getString("LAENDERKUERZEL"),
-            Money(resultSet.getBigDecimal("sales"), resultSet.getString("HAUS_WAEHRUNG")),
-            resultSet.getString("LANDNAME")
-            )
-        }
-      } catch {
-        case e: Throwable => printError(e)
-      }
-    })
-    sales
   }
 }
