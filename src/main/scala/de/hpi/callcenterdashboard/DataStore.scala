@@ -579,6 +579,7 @@ class DataStore(credentials: CredentialsTrait) {
              )
              AND (? = '' OR bestellung.material = ?)
            GROUP BY kunde.LAND, land.NAME, bestellung.HAUS_WAEHRUNG, REGION_SUMME, REGION_NAME, REGION_ID
+           ORDER BY land.NAME ASC, REGION_NAME ASC
          """
 
       try {
