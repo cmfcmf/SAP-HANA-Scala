@@ -252,10 +252,10 @@ class DataStore(credentials: CredentialsTrait) {
     var orders = List.empty[Order]
     connection.foreach(connection => {
       val sql = s"""
-            SELECT *, bestell_summe
+            SELECT *, BESTELL_SUMME
             FROM (
               SELECT
-                (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS bestell_summe,
+                (SUM(HAUS_BETRAG) OVER(ORDER BY BUCHUNGSDATUM DESC, BELEGNUMMER DESC) - (HAUS_BETRAG)) * -1 AS BESTELL_SUMME,
                 bestellung.*,
                 acdoca.MSL AS MENGE,
                 material.MATERIALNUMMER, material.TEXT AS MATERIAL_TEXT,
@@ -269,8 +269,8 @@ class DataStore(credentials: CredentialsTrait) {
               AND bestellung.BUCHUNGSDATUM <= ?
               AND bestellung.KONTO = $costsAccount
             )
-            WHERE bestell_summe < (
-              SELECT SUM(HAUS_BETRAG) * (-1) as amount
+            WHERE BESTELL_SUMME < (
+              SELECT SUM(HAUS_BETRAG) * (-1) as OFFENER_BETRAG
               FROM $tablePrefix.ACDOCA_HPI
               WHERE KUNDE = ?
               AND BUCHUNGSDATUM <= ?
@@ -363,7 +363,7 @@ class DataStore(credentials: CredentialsTrait) {
     connection.foreach(connection => {
       // @todo We currently return all products ever sold to that customer.
       val totalAmountQuery = s"""
-        SELECT SUM(HAUS_BETRAG) AS GESAMMT_UMSATZ
+        SELECT SUM(HAUS_BETRAG) AS GESAMT_UMSATZ
         FROM $tablePrefix.ACDOCA_HPI
         WHERE BUCHUNGSDATUM BETWEEN ? AND ?
           AND KUNDE = ?
@@ -371,9 +371,9 @@ class DataStore(credentials: CredentialsTrait) {
         """
       val sql = s"""
         SELECT
-          SUM(bestellung.HAUS_BETRAG) AS UMSATZ, bestellung.HAUS_WAEHRUNG,
-          (SUM(bestellung.HAUS_BETRAG) / GESAMMT_UMSATZ) * 100 AS UMSATZANTEIL,
-          GESAMMT_UMSATZ,
+          SUM(bestellung.HAUS_BETRAG) AS UMSATZ, bestellung.HAUS_WAEHRUNG AS WAEHRUNG,
+          (SUM(bestellung.HAUS_BETRAG) / GESAMT_UMSATZ) * 100 AS UMSATZANTEIL,
+          GESAMT_UMSATZ,
           bestellung.MATERIAL AS MATERIAL,
           material.TEXT AS MATERIAL_TEXT
         FROM
@@ -384,7 +384,7 @@ class DataStore(credentials: CredentialsTrait) {
           AND bestellung.KUNDE = ?
           AND bestellung.KONTO = $salesAccount
           AND material.MATERIALNUMMER = bestellung.MATERIAL
-        GROUP BY bestellung.KUNDE, bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG, GESAMMT_UMSATZ
+        GROUP BY bestellung.KUNDE, bestellung.MATERIAL, material.TEXT, bestellung.HAUS_WAEHRUNG, GESAMT_UMSATZ
         ORDER BY SUM(bestellung.HAUS_BETRAG) DESC
         """
 
@@ -458,7 +458,7 @@ class DataStore(credentials: CredentialsTrait) {
       val sql =
         s"""
             SELECT
-              SUM(HAUS_BETRAG) AS SUMME, bestellung.HAUS_WAEHRUNG,
+              SUM(HAUS_BETRAG) AS SUMME, bestellung.HAUS_WAEHRUNG AS WAEHRUNG,
               bestellung.MATERIAL AS MATERIAL, material.TEXT AS MATERIAL_TEXT
             FROM $tablePrefix.ACDOCA_HPI bestellung
             JOIN $tablePrefix.KNA1_HPI kunde ON (kunde.KUNDE = bestellung.KUNDE)
