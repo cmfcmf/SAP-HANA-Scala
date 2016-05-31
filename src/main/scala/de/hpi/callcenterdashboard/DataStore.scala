@@ -540,10 +540,22 @@ class DataStore(credentials: CredentialsTrait) {
              kunde.LAND = region.LAND1
              AND region.SPRAS = 'E' AND region.MANDT = $mandant
            )
+           JOIN $tablePrefix.MARA_HPI material_info_int ON (material_info_int.MATERIALNUMMER = bestellung.MATERIAL)
            WHERE
-             KONTO = $salesAccount
+             bestellung.KONTO = $salesAccount
              AND bestellung.BUCHUNGSDATUM BETWEEN ? AND ?
              AND kunde.REGION <> ''
+             AND (? = '' OR kunde.REGION = ?)
+             AND (? = '' OR bestellung.WERK = ?)
+             AND (? = '' OR material_info_int.MATERIALART = ?)
+             AND EXISTS(
+              SELECT * FROM $tablePrefix.MVKE_HPI material_info_ext
+              WHERE
+                material_info_ext.MATERIALNUMMER = bestellung.MATERIAL
+                AND material_info_ext.PRODUKTHIERARCHIE LIKE ? || '%'
+                AND (? = '' OR material_info_ext.VETRIEBSORGANISATION = ?)
+             )
+             AND (? = '' OR bestellung.material = ?)
            GROUP BY region.BEZEI, kunde.LAND, kunde.REGION
          """
 
@@ -584,24 +596,36 @@ class DataStore(credentials: CredentialsTrait) {
 
       try {
         val preparedStatement = connection.prepareStatement(sql)
+        var i = 0
         preparedStatement.setString(1, filter.startDate.unformatted)
         preparedStatement.setString(2, filter.endDate.unformatted)
-        preparedStatement.setString(3, filter.startDate.unformatted)
-        preparedStatement.setString(4, filter.endDate.unformatted)
+        preparedStatement.setString(3, filter.regionId)
+        preparedStatement.setString(4, filter.regionId)
+        preparedStatement.setString(5, filter.factoryId)
+        preparedStatement.setString(6, filter.factoryId)
+        preparedStatement.setString(7, filter.materialType)
+        preparedStatement.setString(8, filter.materialType)
+        preparedStatement.setString(9, filter.productHierarchyVal)
+        preparedStatement.setString(10, filter.salesOrganization)
+        preparedStatement.setString(11, filter.salesOrganization)
+        preparedStatement.setString(12, filter.productId)
+        preparedStatement.setString(13, filter.productId)
 
-        preparedStatement.setString(5, filter.countryId)
-        preparedStatement.setString(6, filter.countryId)
-        preparedStatement.setString(7, filter.regionId)
-        preparedStatement.setString(8, filter.regionId)
-        preparedStatement.setString(9, filter.factoryId)
-        preparedStatement.setString(10, filter.factoryId)
-        preparedStatement.setString(11, filter.materialType)
-        preparedStatement.setString(12, filter.materialType)
-        preparedStatement.setString(13, filter.productHierarchyVal)
-        preparedStatement.setString(14, filter.salesOrganization)
-        preparedStatement.setString(15, filter.salesOrganization)
-        preparedStatement.setString(16, filter.productId)
-        preparedStatement.setString(17, filter.productId)
+        preparedStatement.setString(14, filter.startDate.unformatted)
+        preparedStatement.setString(15, filter.endDate.unformatted)
+        preparedStatement.setString(16, filter.countryId)
+        preparedStatement.setString(17, filter.countryId)
+        preparedStatement.setString(18, filter.regionId)
+        preparedStatement.setString(19, filter.regionId)
+        preparedStatement.setString(20, filter.factoryId)
+        preparedStatement.setString(21, filter.factoryId)
+        preparedStatement.setString(22, filter.materialType)
+        preparedStatement.setString(23, filter.materialType)
+        preparedStatement.setString(24, filter.productHierarchyVal)
+        preparedStatement.setString(25, filter.salesOrganization)
+        preparedStatement.setString(26, filter.salesOrganization)
+        preparedStatement.setString(27, filter.productId)
+        preparedStatement.setString(28, filter.productId)
 
         val resultSet = preparedStatement.executeQuery()
         var currentCountryId = ""
