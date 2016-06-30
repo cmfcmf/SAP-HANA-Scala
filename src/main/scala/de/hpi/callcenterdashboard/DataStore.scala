@@ -362,6 +362,7 @@ class DataStore(credentials: CredentialsTrait) {
     var products = List.empty[(Product, Float, Money)]
     connection.foreach(connection => {
       // @todo We currently return all products ever sold to that customer.
+      // We would need to implement paging if we had more than just a few products.
       val totalAmountQuery = s"""
         SELECT SUM(HAUS_BETRAG) AS GESAMT_UMSATZ
         FROM $tablePrefix.ACDOCA_HPI
@@ -687,6 +688,9 @@ class DataStore(credentials: CredentialsTrait) {
     factories
   }
 
+  /**
+    * Get a list of all the countries.
+    */
   def getCountries: List[Country] = {
     var countries = List.empty[Country]
     connection.foreach(connection => {
@@ -711,6 +715,10 @@ class DataStore(credentials: CredentialsTrait) {
     countries
   }
 
+  /**
+    * Get a list of all the regions for a given country.
+    * @param country The country to get regions for.
+    */
   def getRegionsForCountry(country: String): List[Region] = {
     var regions = List.empty[Region]
     connection.foreach(connection => {
@@ -737,6 +745,9 @@ class DataStore(credentials: CredentialsTrait) {
     regions
   }
 
+  /**
+    * Get a list of material types (id, name).
+    */
   def getMaterialTypes: List[(String, String)] = {
     var materialTypes = List.empty[(String, String)]
     connection.foreach(connection => {
@@ -764,6 +775,9 @@ class DataStore(credentials: CredentialsTrait) {
     materialTypes
   }
 
+  /**
+    * Returns a list of sales organizations (id, name).
+    */
   def getSalesOrganizations: List[(String, String)] = {
     var salesOrganizsations = List.empty[(String, String)]
     connection.foreach(connection => {
@@ -789,6 +803,9 @@ class DataStore(credentials: CredentialsTrait) {
     salesOrganizsations
   }
 
+  /**
+    * Returns triples of hierachy id, hierachy name and hierachy level, ordered by hierachy id.
+    */
   def getProductHierarchy: List[(String, String, Int)] = {
     var productHierarchy = List.empty[(String, String, Int)]
     connection.foreach(connection => {
@@ -815,6 +832,9 @@ class DataStore(credentials: CredentialsTrait) {
     productHierarchy
   }
 
+  /**
+    * Get a list of products from the database.
+    */
   def getProducts: List[Product] = {
     var products = List.empty[Product]
     connection.foreach(connection => {
